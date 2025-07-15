@@ -1,108 +1,224 @@
 @import "tailwindcss";
 
-/* Inter font support */
+/* Font support for Inter Variable */
 @supports (font-variation-settings: normal) {
   :root {
     font-family: 'InterVariable', sans-serif;
   }
 }
 
-/* Custom CSS variables and base styles */
-:root {
-  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Arial, sans-serif;
+/* Critical: Glass morphism base class */
+@layer utilities {
+  .glass-effect {
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    background: rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  }
+
+/* Fix for theme adjustments */
+body.dark-gradient .glass-effect {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff;
 }
 
-/* Base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+body.light-gradient .glass-effect {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #000000;
+}
+  
+  /* Loading shimmer effect */
+  .loading-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .loading-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  /* Wave height visual background */
+  .wave-height-bg {
+    background: linear-gradient(to bottom, 
+      transparent 0%, 
+      transparent calc(var(--fill-height) - 0.5px), 
+      rgba(0, 0, 0, 1) calc(var(--fill-height) - 0.5px), 
+      rgba(0, 0, 0, 1) calc(var(--fill-height) + 0.5px), 
+      transparent calc(var(--fill-height) + 0.5px), 
+      transparent 100%);
+  }
+  
+  /* Direction arrows */
+  .direction-arrow {
+    transition: all 0.3s ease;
+    transform-origin: center;
+  }
 }
 
+/* Enhanced body styles for sky gradients */
 body {
-  font-family: var(--font-primary);
+  min-height: 100vh;
+  transition: background 3s ease-in-out;
+  background-attachment: fixed;
+  background-size: 400% 400%;
+  overflow-x: hidden;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-/* Glass morphism effect */
-.glass-effect {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+/* Weather icon styling - system emojis only */
+.weather-icon {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Arial, sans-serif;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+  font-size: 24px;
+  margin-right: 16px;
+  color: inherit;
+  font-weight: 400;
+  font-variant-emoji: presentation;
+  -webkit-font-feature-settings: normal;
+  font-feature-settings: normal;
 }
 
-/* Loading shimmer effect */
-.loading-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.loading-shimmer::after {
-  content: '';
-  position: absolute;
+/* Full width wave container */
+.wave-container {
+  position: fixed;
+  left: 0;
+  right: 0;
   top: 0;
-  left: -100%;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.6;
+  mix-blend-mode: overlay;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+#waveCanvas {
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 100%
-  );
-  animation: shimmer 2s ease-in-out infinite;
-  pointer-events: none;
+  display: block;
 }
 
-@keyframes shimmer {
-  0% { left: -100%; }
-  100% { left: 100%; }
+/* Ensure content is readable over gradients */
+.container, .top-controls {
+  position: relative;
+  z-index: 10;
 }
 
-/* Direction arrows */
-.direction-arrow {
-  transition: all 0.3s ease;
-  transform-origin: center;
+/* Adjust for dark gradients (night, storms, etc.) */
+body.dark-gradient .glass-effect {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff;
 }
 
-/* Bell icon styles */
+body.dark-gradient .location,
+body.dark-gradient .rating,
+body.dark-gradient .detail-value {
+  color: #ffffff;
+}
+
+body.dark-gradient .weather-icon {
+  color: #ffffff;
+}
+
+/* Adjust for light gradients (midday, fog, etc.) */
+body.light-gradient .glass-effect {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #000000;
+}
+
+body.light-gradient .location,
+body.light-gradient .rating,
+body.light-gradient .detail-value {
+  color: #000000;
+}
+
+body.light-gradient .weather-icon {
+  color: #000000;
+}
+
+/* Text contrast adjustments */
+.rating, .location, .detail-value {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Gradient-specific adjustments */
+body.sunset .rating,
+body.sunrise .rating,
+body.golden-hour .rating {
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+body.midday .rating,
+body.light-clouds .rating,
+body.fog .rating {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Top controls adjustments */
+body.dark-gradient .top-controls .btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+body.light-gradient .top-controls .btn {
+  background: rgba(255, 255, 255, 0.8);
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Bell icon specific styles */
 .bell-icon {
-  font-family: var(--font-emoji);
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #000;
+  transition: all 0.3s ease;
   font-variant-emoji: presentation;
   -webkit-font-feature-settings: normal;
   font-feature-settings: normal;
+  position: relative;
 }
 
-/* Weather icon styles */
-.weather-icon {
-  font-family: var(--font-emoji);
-  font-variant-emoji: presentation;
-  -webkit-font-feature-settings: normal;
-  font-feature-settings: normal;
+/* Animation definitions for SURF LAB */
+
+/* Spinner Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Notification bell states */
-.notification-bell.enabled .bell-icon {
-  color: #10b981;
-}
-
-.notification-bell.enabled:hover .bell-icon {
-  animation: bell-ring 0.5s ease-in-out;
-}
-
-@keyframes bell-ring {
-  0%, 100% { transform: rotate(0deg); }
-  10%, 30%, 50%, 70%, 90% { transform: rotate(-3deg); }
-  20%, 40%, 60%, 80% { transform: rotate(3deg); }
-}
-
-/* Slide in animation for toasts */
-@keyframes slide-in {
+/* Toast Slide In Animation */
+@keyframes slideIn {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);
@@ -113,93 +229,551 @@ body {
   }
 }
 
-.animate-slide-in {
-  animation: slide-in 0.3s ease;
+/* Wind Lines Animation */
+.wind-line {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 1px;
+  animation: windFlow linear infinite;
 }
 
-/* Theme adjustments */
-.dark-gradient {
-  color: #ffffff;
+@keyframes windFlow {
+  0% { 
+    transform: translateX(-100px) translateY(0); 
+    opacity: 0; 
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { 
+    transform: translateX(300px) translateY(0); 
+    opacity: 0; 
+  }
 }
 
-.dark-gradient .glass-effect {
+/* Period Wave Animation */
+.period-wave {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 1px;
+  animation: periodWave ease-in-out infinite;
+}
+
+@keyframes periodWave {
+  0%, 100% { 
+    transform: translateY(0) scaleX(1); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateY(-10px) scaleX(1.2); 
+    opacity: 0.8; 
+  }
+}
+
+/* Period Flow Animation - moves linearly */
+@keyframes periodFlow {
+  0% { 
+    transform: translateX(-50px); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateX(100px); 
+    opacity: 0.8; 
+  }
+  100% { 
+    transform: translateX(250px); 
+    opacity: 0.3; 
+  }
+}
+
+/* Bell ring animation */
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(-3deg); }
+  20%, 40%, 60%, 80% { transform: rotate(3deg); }
+}
+
+/* Component-specific styles */
+
+/* Top Controls - EXACT MATCH */
+.top-controls {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  padding-top: calc(15px + env(safe-area-inset-top));
+  background: transparent;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid #000;
+}
+
+/* Container and Layout - EXACT MATCH */
+.container {
+  max-width: 400px;
+  margin: 0 auto;
+  /* padding: 20px; */
+  position: relative;
+  z-index: 2;
+  /* min-height: 100vh; */
+  /* padding-top: calc(100px + env(safe-area-inset-top)); */
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.location {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.timestamp {
+  font-size: 14px;
+  opacity: 0.8;
+  font-weight: 400;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Status Card */
+.status-card {
   background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 30px;
+  text-align: center;
+  border: 1px solid #000;
 }
 
-.dark-gradient .bell-icon:not(.text-emerald-400) {
-  color: #ffffff;
+.rating {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-.dark-gradient .weather-icon {
-  color: #ffffff;
+.duration {
+  font-size: 16px;
+  opacity: 0.9;
+  font-weight: 500;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-.light-gradient {
-  color: #000000;
+/* Weather Card */
+.weather-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+  border: 1px solid #000;
 }
 
-.light-gradient .glass-effect {
-  background: rgba(255, 255, 255, 0.25);
+.weather-description {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  text-transform: capitalize;
 }
 
-.light-gradient .bell-icon:not(.text-emerald-600) {
-  color: #000000;
+.temp-item {
+  text-align: center;
 }
 
-.light-gradient .weather-icon {
-  color: #000000;
+.temp-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Responsive design */
+.temp-value {
+  font-size: 24px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+}
+
+.temp-unit {
+  font-size: 16px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+/* Tide Card */
+.tide-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 30px;
+  border: 1px solid #000;
+  position: relative;
+  overflow: hidden;
+}
+
+.tide-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  position: relative;
+  z-index: 10;
+}
+
+.tide-icon {
+  font-size: 24px;
+}
+
+.tide-visual-container {
+  position: relative;
+  height: 120px;
+  margin: 15px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.tide-wave-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tide-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.tide-marker {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transform: translateX(-50%);
+}
+
+.tide-current {
+  text-align: center;
+  margin-bottom: 15px;
+  position: relative;
+  z-index: 10;
+}
+
+.tide-height {
+  font-size: 24px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin-bottom: 5px;
+}
+
+.tide-state {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+  font-weight: 500;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.tide-predictions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  position: relative;
+  z-index: 10;
+}
+
+.tide-prediction {
+  text-align: center;
+  padding: 15px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tide-prediction-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+  margin-bottom: 5px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.tide-prediction-time {
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin-bottom: 3px;
+}
+
+.tide-prediction-height {
+  font-size: 14px;
+  opacity: 0.8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Detail Items */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.detail-item {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  border: 1px solid #000;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.detail-visual-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.detail-label, .tide-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  position: relative;
+  z-index: 10;
+}
+
+.detail-value {
+  font-size: 24px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  position: relative;
+  z-index: 10;
+}
+
+.detail-value span {
+  transition: all 0.3s ease;
+  opacity: 0.7;
+  cursor: help;
+}
+
+.detail-value:hover span {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Visual Effects Containers */
+.wind-lines-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.period-visual-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Loading and Error States */
+.loading {
+  display: none;
+  text-align: center;
+  margin: 40px 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+}
+
+.spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+.error {
+  background: rgba(248, 113, 113, 0.2);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+  padding: 20px;
+  border-radius: 15px;
+  margin: 20px 0;
+  text-align: center;
+  display: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+}
+
+.tide-visual-container {
+  position: relative;
+  height: 120px;
+  margin: 15px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tide-chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Responsive Design */
 @media (max-width: 480px) {
   .container {
     padding: 15px;
     padding-top: calc(70px + env(safe-area-inset-top));
   }
   
-  .glass-effect {
+  .status-card, .weather-card, .tide-card {
     padding: 20px;
+  }
+  
+  .top-controls {
+    padding: 10px 15px;
+    padding-top: calc(10px + env(safe-area-inset-top));
   }
   
   .detail-value {
     font-size: 20px;
   }
   
+  .detail-value span {
+    font-size: 1em;
+  }
+
   .weather-icon {
     font-size: 36px;
   }
+
+  .temp-value {
+    font-size: 24px;
+  }
+
+  .tide-height {
+    font-size: 24px;
+  }
+
+  .tide-predictions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .tide-visual-container {
+    height: 100px;
+  }
 }
 
-/* Reduce motion support */
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .loading-shimmer::after,
-  .animate-shimmer,
-  .animate-slide-in {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .detail-value span {
+    transition: none !important;
+  }
+
+  .wind-line, .period-wave {
     animation: none !important;
   }
   
-  .transition-all,
-  .transition-opacity,
-  .transition-transform {
-    transition: none !important;
+  .loading-shimmer::after {
+    animation: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .status-card, .detail-item, .weather-card, .tide-card {
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.8);
   }
 }
 
 /* Print styles */
 @media print {
-  .glass-effect {
-    background: white !important;
-    border: 1px solid #ccc !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  
-  .fixed {
-    position: relative !important;
-  }
-  
   body {
     background: white !important;
     color: black !important;
+  }
+  
+  .top-controls {
+    display: none;
+  }
+}
+
+/* Ensure proper rendering on all platforms */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .bell-icon,
+  .weather-icon {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
