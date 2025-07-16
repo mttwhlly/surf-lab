@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 /* Font support for Inter Variable */
-@supports (font-variation-settings: normal) {
+/* @supports (font-variation-settings: normal) {
   :root {
-    font-family: 'InterVariable', sans-serif;
+    font-family: var(--font-geist), sans-serif;
   }
-}
+} */
 
 /* Critical: Glass morphism base class */
 @layer utilities {

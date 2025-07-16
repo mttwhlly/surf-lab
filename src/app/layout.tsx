@@ -15,6 +15,7 @@ const geist = Geist({
   variable: '--font-geist',
   weight: ['300', '400', '500', '600'],
   display: 'swap',
+  preload: true, // Added preload
 })
 
 const geistMono = Geist_Mono({
@@ -22,6 +23,7 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   weight: ['400', '500', '600'],
   display: 'swap',
+  preload: true, // Added preload
 })
 
 export const metadata: Metadata = {
@@ -32,7 +34,6 @@ export const metadata: Metadata = {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
   },
-  // themeColor: '#0077cc',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -64,7 +65,6 @@ export default function RootLayout({
         bg-white 
         overflow-x-hidden 
         antialiased
-        ${inter.className}
       `}>
         {children}
       </body>
