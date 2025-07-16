@@ -16,6 +16,7 @@ import {
   Zap, 
   CloudLightning 
 } from 'lucide-react';
+import Image from 'next/image';
 
 interface SurfData {
   location: string;
@@ -231,8 +232,15 @@ const getWeatherIcon = (weatherCode: number | null) => {
   return (
     <div className='pb-20'>
       {/* Top Controls */}
-      <div className="fixed top-0 left-0 right-0 mx-2 sm:mx-4 lg:mx-8 shadow-md z-50 flex py-4 px-6 mt-5 rounded-full justify-between items-center  bg-white/40 border-b border-black/10">
-        <h1 className="font-light text-xl">SURF LAB</h1>
+      <div className="fixed top-0 left-0 right-0 mx-2 sm:mx-4 lg:mx-8 shadow-md z-50 flex p-4 mt-5 rounded-full justify-between items-center  bg-white/40 border-b border-black/10">
+        {/* <h1 className="font-light text-xl">SURF LAB</h1> */}
+        <Image 
+          src="/wave-logo.svg"
+          alt="Surf Lab Logo"
+          width={120}
+          height={40}
+          className="h-8 w-auto"
+        />
       </div>
 
       {/* Main Container */}
