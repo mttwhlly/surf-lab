@@ -9,8 +9,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (needed for build)
-RUN npm install && npm cache clean --force
+# Remove problematic dependencies and install
+RUN npm pkg delete dependencies.@types/canvas || true && \
+    npm pkg delete devDependencies.@types/canvas || true && \
+    npm pkg delete dependencies.canvas || true && \
+    npm pkg delete devDependencies.canvas || true && \
+    npm install && npm cache clean --force
 
 # Copy source code and build
 COPY . .
