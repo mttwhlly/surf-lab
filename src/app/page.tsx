@@ -2,6 +2,20 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { 
+  Sun, 
+  CloudSun, 
+  Cloud, 
+  Cloudy, 
+  Droplet,
+  Fog, 
+  CloudRain, 
+  CloudSnow, 
+  CloudDrizzle, 
+  Snowflake, 
+  Zap, 
+  CloudLightning 
+} from 'lucide-react';
 
 interface SurfData {
   location: string;
@@ -155,22 +169,45 @@ export default function SurfApp() {
     }
   };
 
-  const getWeatherIcon = (weatherCode: number | null) => {
-    if (weatherCode === null || weatherCode === undefined) {
-      return '○';
-    }
-    
-    const iconMap: { [key: number]: string } = {
-      0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
-      45: '🌫️', 48: '🌫️',
-      51: '🌦️', 53: '🌦️', 55: '🌧️', 56: '🌨️', 57: '🌨️',
-      61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌨️', 67: '🌨️',
-      71: '🌨️', 73: '❄️', 75: '❄️', 77: '🌨️',
-      80: '🌦️', 81: '🌧️', 82: '⛈️', 85: '🌨️', 86: '❄️',
-      95: '⛈️', 96: '⛈️', 99: '⛈️'
-    };
-    return iconMap[weatherCode] || '🌤️';
-  };
+const getWeatherIcon = (weatherCode: number | null) => {
+  if (weatherCode === null || weatherCode === undefined) {
+    return <Sun className="w-7 h-7" />;
+  }
+  
+  const iconProps = { className: "w-7 h-7" };
+  
+  switch (weatherCode) {
+    case 0: return <Sun {...iconProps} />; // Clear sky
+    case 1: return <CloudSun {...iconProps} />; // Mainly clear
+    case 2: return <Cloud {...iconProps} />; // Partly cloudy
+    case 3: return <Cloudy {...iconProps} />; // Overcast
+    case 45:
+    case 48: return <Fog {...iconProps} />; // Fog
+    case 51:
+    case 53: return <CloudDrizzle {...iconProps} />; // Drizzle
+    case 55:
+    case 61:
+    case 63:
+    case 65: return <CloudRain {...iconProps} />; // Rain
+    case 56:
+    case 57:
+    case 66:
+    case 67:
+    case 71:
+    case 73:
+    case 75:
+    case 77:
+    case 85:
+    case 86: return <CloudSnow {...iconProps} />; // Snow
+    case 80:
+    case 81: return <CloudRain {...iconProps} />; // Rain showers
+    case 82: return <CloudLightning {...iconProps} />; // Heavy rain
+    case 95:
+    case 96:
+    case 99: return <Zap {...iconProps} />; // Thunderstorm
+    default: return <CloudSun {...iconProps} />;
+  }
+};
 
   const getCompassDirection = (degrees: number) => {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -192,17 +229,17 @@ export default function SurfApp() {
   };
 
   return (
-    <div className='pt-[200px] pb-20'>
+    <div className='pb-20'>
       {/* Top Controls */}
       <div className="fixed top-0 left-0 right-0 mx-2 sm:mx-4 lg:mx-8 shadow-md z-50 flex py-4 px-6 mt-5 rounded-full justify-between items-center  bg-white/40 border-b border-black/10">
         <h1 className="font-light text-xl">SURF LAB</h1>
       </div>
 
       {/* Main Container */}
-      <div className="container max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[300px] shadow-lg rounded-3xl glass-effect">
+      <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[300px] shadow-lg rounded-3xl glass-effect">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className={`text-2xl font-semibold my-2 ${isLoading ? 'relative loading-shimmer' : ''}`}>
+          <div className={`text-2xl font-semibold mt-2 mb-6 ${isLoading ? 'relative loading-shimmer' : ''}`}>
             {surfData?.location || 'St. Augustine, FL'}
             {isLoading && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer"></div>
@@ -210,8 +247,8 @@ export default function SurfApp() {
           </div>
           <div className="temp-item">
             <div className="temp-value flex justify-center items-center text-2xl font-semibold">
-              <div className={`weather-icon font-emoji text-2xl mr-4 ${isLoading ? 'relative loading-shimmer' : ''}`}>
-                {isLoading ? '○' : getWeatherIcon(surfData?.weather.weather_code || null)}
+              <div className={`weather-icon mr-4 ${isLoading ? 'relative loading-shimmer' : ''}`}>
+                {isLoading ? <Sun className="w-7 h-7 opacity-50" /> : getWeatherIcon(surfData?.weather.weather_code || null)}
                 {isLoading && (
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer"></div>
                 )}
@@ -237,9 +274,9 @@ export default function SurfApp() {
         {/* Surf Data */}
         <div className={isLoading ? 'opacity-50' : ''}>
           {/* Details Grid */}
-          <div className="details-grid grid grid-cols-2 gap-4 mb-8">
+            <div className="details-grid grid grid-cols-2 gap-4">
             {/* Wave Height Card */}
-            <div className="bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105">
+            <div className="bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105 aspect-square flex flex-col justify-center">
               <div 
                 ref={waveHeightBgRef}
                 className="detail-visual-bg absolute inset-0 pointer-events-none"
@@ -257,7 +294,7 @@ export default function SurfApp() {
             </div>
             
             {/* Period Card */}
-            <div className=" bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105">
+            <div className="bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105 aspect-square flex flex-col justify-center">
               <div 
                 ref={periodVisualRef}
                 className="period-visual-container absolute inset-0 overflow-hidden pointer-events-none"
@@ -280,7 +317,7 @@ export default function SurfApp() {
             </div>
             
             {/* Wind Speed Card */}
-            <div className=" bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105">
+            <div className="bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105 aspect-square flex flex-col justify-center">
               <div 
                 ref={windLinesRef}
                 className="wind-lines-container absolute inset-0 overflow-hidden pointer-events-none"
@@ -303,10 +340,11 @@ export default function SurfApp() {
             </div>
             
             {/* Water Temperature Card */}
-            <div className="bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105">
+            <div className="bg-white/40 border-none relative overflow-hidden transition-transform duration-200 rounded-2xl p-5 text-center hover:scale-105 aspect-square flex flex-col justify-center">
               <div className="detail-label text-xs uppercase tracking-wider opacity-80 mb-2 font-semibold relative z-10">Water</div>
               <div className={`${isLoading ? 'relative loading-shimmer' : ''}`}>
                 <div className="text-2xl font-semibold flex items-center justify-center gap-1 relative z-10">
+                  <Droplet />
                   {isLoading ? '--' : Math.round(surfData?.weather.water_temperature_f || 0)}
                   <span className="temp-unit text-base opacity-70 ml-1">°F</span>
                 </div>
