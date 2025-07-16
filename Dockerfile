@@ -1,10 +1,26 @@
 # Use Node.js 20 Alpine
-FROM node:20-alpine
+FROM node:20-alpine AS base
 
-# Install security updates and required packages
-RUN apk update && apk upgrade && apk add --no-cache \
-    dumb-init \
-    && rm -rf /var/cache/apk/*
+# Install security updates
+RUN apk update && apk upgrade && apk add --no-cache dumb-init && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (needed for build)
+RUN npm install && npm cache clean --force
+
+# Copy source code and build
+COPY . .
+RUN npm run build
+
+# Production stage - only runtime dependencies
+FROM node:20-alpine AS runner
+
+# Install security updates
+RUN apk update && apk upgrade && apk add --no-cache dumb-init && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
@@ -12,18 +28,10 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy package files and install dependencies
-COPY package*.json ./
-RUN npm install --only=production && npm cache clean --force
-
-# Copy source code
-COPY . .
-
-# Build the application  
-RUN npm run build
-
-# Change ownership to nextjs user
-RUN chown -R nextjs:nodejs /app
+# Copy built application
+COPY --from=base /app/public ./public
+COPY --from=base --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=base --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -41,4 +49,4 @@ EXPOSE 3000
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
