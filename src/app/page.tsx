@@ -175,7 +175,7 @@ const getWeatherIcon = (weatherCode: number | null) => {
     return <Sun className="w-7 h-7" />;
   }
   
-  const iconProps = { className: "w-7 h-7" };
+  const iconProps = { className: "w-7 h-7", strokeWidth: 1 };
   
   switch (weatherCode) {
     case 0: return <Sun {...iconProps} />; // Clear sky
@@ -232,7 +232,7 @@ const getWeatherIcon = (weatherCode: number | null) => {
   return (
     <div className='pb-20'>
       {/* Top Controls */}
-      <div className="fixed top-0 left-0 right-0 mx-2 sm:mx-4 lg:mx-8 shadow-md z-50 flex p-4 mt-5 rounded-full justify-between items-center  bg-white/40 border-b border-black/10">
+      <div className="fixed top-0 left-0 right-0 mx-2 sm:mx-4 lg:mx-8 shadow-md z-50 flex p-4 mt-5 rounded-full justify-between items-center  bg-white/80 backdrop-blur-xs border-b border-black/10">
         <Image 
           src="/wave-logo.svg"
           alt="Surf Lab Logo"
@@ -256,7 +256,7 @@ const getWeatherIcon = (weatherCode: number | null) => {
           <div className="temp-item">
             <div className="temp-value flex justify-center items-center text-2xl font-semibold">
               <div className={`weather-icon mr-4 ${isLoading ? 'relative loading-shimmer' : ''}`}>
-                {isLoading ? <Sun className="w-7 h-7 opacity-50" /> : getWeatherIcon(surfData?.weather.weather_code || null)}
+                {isLoading ? <Sun className="w-7 h-7 opacity-50" strokeWidth={1} /> : getWeatherIcon(surfData?.weather.weather_code || null)}
                 {isLoading && (
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer"></div>
                 )}

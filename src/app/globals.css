@@ -81,6 +81,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+
+  background-image: 
+        radial-gradient(circle at center, rgba(0, 0, 0, 0.8) 0.5px, transparent 0.5px);
+    background-size: 32px 32px;
+    background-position: 0 0;
+    background-repeat: repeat;
+    background-attachment: fixed;
 }
 
 /* Weather icon styling - system emojis only */
