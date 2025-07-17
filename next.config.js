@@ -7,8 +7,8 @@ const nextConfig = {
   compress: true,
   
   experimental: {
-    appDir: true,
-    forceSwcTransforms: true,
+    // appDir: true,
+    // forceSwcTransforms: true,
   },
   
   // Image optimization

@@ -76,31 +76,39 @@ export default function SurfApp() {
     }
   }, [surfData, isLoading]);
 
-  const loadAnimationScripts = () => {
-    // Load swell animation web component
-    if (!customElements.get('swell-animation')) {
-      const swellScript = document.createElement('script');
-      swellScript.textContent = getSwellAnimationCode();
-      document.head.appendChild(swellScript);
-    }
+const loadAnimationScripts = () => {
+  // Load swell animation web component
+  if (!customElements.get('swell-animation')) {
+    const swellScript = document.createElement('script');
+    swellScript.textContent = getSwellAnimationCode();
+    swellScript.id = 'swell-animation-script';
+    document.head.appendChild(swellScript);
+  }
 
-    // Load wind animation web component  
-    if (!customElements.get('wind-animation')) {
-      const windScript = document.createElement('script');
-      windScript.textContent = getWindAnimationCode();
-      document.head.appendChild(windScript);
-    }
+  // Load wind animation web component  
+  if (!customElements.get('wind-animation')) {
+    const windScript = document.createElement('script');
+    windScript.textContent = getWindAnimationCode();
+    windScript.id = 'wind-animation-script';
+    document.head.appendChild(windScript);
+  }
 
-    // Load visualization functions
+  // Load visualization functions - check if they already exist
+  if (!(window as any).updateWaveHeightVisual) {
     const vizScript = document.createElement('script');
     vizScript.textContent = getVisualizationCode();
+    vizScript.id = 'visualization-script';
     document.head.appendChild(vizScript);
+  }
 
-    // Load tide visualizer
+  // Load tide visualizer - check if SmoothTideChart already exists
+  if (!(window as any).SmoothTideChart) {
     const tideScript = document.createElement('script');
     tideScript.textContent = getTideVisualizerCode();
+    tideScript.id = 'tide-visualizer-script';
     document.head.appendChild(tideScript);
-  };
+  }
+};
 
   const updateVisualizations = () => {
     if (!surfData) return;
@@ -239,6 +247,7 @@ const getWeatherIcon = (weatherCode: number | null) => {
           width={120}
           height={40}
           className="h-8 w-auto"
+          priority
           />
           {/* <h1 className="font-light text-xl">SURF LAB</h1> */}
       </div>
