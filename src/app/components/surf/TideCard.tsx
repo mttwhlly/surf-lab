@@ -3,7 +3,6 @@
 import { SurfData } from '../../types/surf';
 import { Card } from '../ui/Card';
 import { LoadingShimmer } from '../ui/LoadingShimmer';
-import { TideVisualizer } from '../animations/TideVisualizer';
 
 interface TideCardProps {
   data: SurfData | null;

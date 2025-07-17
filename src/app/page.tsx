@@ -31,12 +31,12 @@ export default function SurfApp() {
         <Image 
           src="/wave-logo.svg"
           alt="Surf Lab Logo"
-          width={120}
-          height={40}
-          className="h-8 w-auto"
+          width={48}
+          height={48}
           priority
         />
       </div>
+
 
       {/* Main Container */}
       <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[300px] shadow-lg rounded-3xl glass-effect">
@@ -49,7 +49,8 @@ export default function SurfApp() {
         {/* Content */}
         <div className={isLoading ? 'opacity-50' : ''}>
           {/* Status Card */}
-          <StatusCard data={surfData} loading={isLoading} />
+          {/* TODO: Implement Status Card.. or not */}
+          {/* <StatusCard data={surfData} loading={isLoading} /> */}
 
           {/* Surf Details Grid */}
           <SurfDetails data={surfData} loading={isLoading} />
