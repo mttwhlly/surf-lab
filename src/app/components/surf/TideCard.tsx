@@ -1,6 +1,6 @@
 'use client';
 
-import { SurfData } from '@/app/types/surf';
+import { SurfData } from '../../types/surf';
 import { Card } from '../ui/Card';
 import { LoadingShimmer } from '../ui/LoadingShimmer';
 import { TideVisualizer } from '../animations/TideVisualizer';

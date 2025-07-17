@@ -1,6 +1,6 @@
 'use client';
 
-import { SurfData } from '@/app/types/surf';
+import { SurfData } from '../../types/surf';
 import { DetailCard } from './DetailCard';
 import { SwellAnimation } from '../animations/SwellAnimation';
 import { WindAnimation } from '../animations/WindAnimation';

@@ -8,7 +8,7 @@ import {
   Cloud, 
   Cloudy, 
   Droplet,
-  Fog, 
+  CloudFog, 
   CloudRain, 
   CloudSnow, 
   CloudDrizzle, 
@@ -183,7 +183,7 @@ const getWeatherIcon = (weatherCode: number | null) => {
     case 2: return <Cloud {...iconProps} />; // Partly cloudy
     case 3: return <Cloudy {...iconProps} />; // Overcast
     case 45:
-    case 48: return <Fog {...iconProps} />; // Fog
+    case 48: return <CloudFog {...iconProps} />; // Fog
     case 51:
     case 53: return <CloudDrizzle {...iconProps} />; // Drizzle
     case 55:
@@ -352,7 +352,7 @@ const getWeatherIcon = (weatherCode: number | null) => {
               <div className="detail-label text-xs uppercase tracking-wider opacity-80 mb-2 font-semibold relative z-10">Water</div>
               <div className={`${isLoading ? 'relative loading-shimmer' : ''}`}>
                 <div className="text-2xl font-semibold flex items-center justify-center gap-1 relative z-10">
-                  <Droplet />
+                  <Droplet strokeWidth={1} />
                   {isLoading ? '--' : Math.round(surfData?.weather.water_temperature_f || 0)}
                   <span className="temp-unit text-base opacity-70 ml-1">°F</span>
                 </div>

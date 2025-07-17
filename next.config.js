@@ -8,7 +8,7 @@ const nextConfig = {
   
   // Keep your existing experimental config and add production optimizations
   experimental: {
-    appDir: true,
+    // appDir: true,
     forceSwcTransforms: true,
   },
   

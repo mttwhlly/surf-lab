@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Geist, Geist_Mono } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css';
 
 const inter = Inter({
@@ -8,22 +8,6 @@ const inter = Inter({
   weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
   preload: true,
-})
-
-const geist = Geist({
-  subsets: ['latin', 'latin-ext'],
-  variable: '--font-geist',
-  weight: ['300', '400', '500', '600'],
-  display: 'swap',
-  preload: true, // Added preload
-})
-
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-geist-mono',
-  weight: ['400', '500', '600'],
-  display: 'swap',
-  preload: true, // Added preload
 })
 
 export const metadata: Metadata = {
@@ -55,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${geist.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${inter.variable}`}>
       <body className={`
         font-sans 
         text-black 
