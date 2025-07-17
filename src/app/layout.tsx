@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'SURF LAB',
-  },
+  }
 }
 
 export const viewport: Viewport = {
@@ -39,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable}`}>
+    <html lang="en" className={`${inter.className} antialiased`}>
       <body className={`
         font-sans 
         text-black 

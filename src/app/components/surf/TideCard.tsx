@@ -3,6 +3,7 @@
 import { SurfData } from '../../types/surf';
 import { Card } from '../ui/Card';
 import { LoadingShimmer } from '../ui/LoadingShimmer';
+import { TideChart } from '../animations/TideChart';
 
 interface TideCardProps {
   data: SurfData | null;
@@ -16,63 +17,60 @@ export function TideCard({ data, loading }: TideCardProps) {
 
   return (
     <Card variant="tide" className="mb-8">
-      <div className="tide-header flex items-center justify-center gap-3 relative z-10">
-        <div className="tide-title text-xs uppercase tracking-wider opacity-80 mb-2 font-semibold">
+      <div className="flex items-center justify-center gap-3 relative z-10">
+        <div className="text-xs uppercase tracking-wider opacity-80 mb-2 font-semibold">
           Tide
         </div>
       </div>
       
-      <div className="tide-current text-center mb-4 relative z-10">
-        <LoadingShimmer isLoading={loading}>
-          <div className="tide-height text-2xl font-semibold mb-1">
+      <div className="text-center mb-4 relative z-10">
+
+          <div className="text-2xl font-semibold mb-1">
             {tideData?.current_height_ft || '--'} ft
           </div>
-        </LoadingShimmer>
-        <LoadingShimmer isLoading={loading}>
-          <div className="tide-state text-sm uppercase tracking-wider opacity-80 font-medium">
+        
+
+          <div className="text-sm uppercase tracking-wider opacity-80 font-medium">
             {tideData?.state || 'Loading'}
           </div>
-        </LoadingShimmer>
+        
       </div>
       
-<div 
-        id="tideVisualContainer"
-        className="tide-visual-container relative h-32 my-4 bg-white/5 rounded-2xl overflow-hidden border border-white/10"
-      >
-        {/* Tide chart will be rendered here by JavaScript */}
+      <div className="relative h-32 my-4 bg-white/5 rounded-2xl overflow-hidden border border-white/10">
+        {!loading && tideData && <TideChart tideData={tideData} />}
       </div>
       
       <div className="tide-predictions grid grid-cols-2 gap-4 relative z-10">
-        <div className="tide-prediction text-center p-4 rounded-2xl bg-white/5 border border-white/10">
-          <div className="tide-prediction-label text-xs uppercase tracking-wider opacity-80 mb-1 font-semibold">
+        <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-xs uppercase tracking-wider opacity-80 mb-1 font-semibold">
             Next High
           </div>
-          <LoadingShimmer isLoading={loading}>
-            <div className="tide-prediction-time text-base font-semibold mb-1">
+  
+            <div className="text-base font-semibold mb-1">
               {tideData?.next_high?.time || '--'}
             </div>
-          </LoadingShimmer>
-          <LoadingShimmer isLoading={loading}>
-            <div className="tide-prediction-height text-sm opacity-80">
+          
+  
+            <div className="text-sm opacity-80">
               {tideData?.next_high?.height ? `${tideData.next_high.height} ft` : '-- ft'}
             </div>
-          </LoadingShimmer>
+          
         </div>
         
-        <div className="tide-prediction text-center p-4 rounded-2xl bg-white/5 border border-white/10">
-          <div className="tide-prediction-label text-xs uppercase tracking-wider opacity-80 mb-1 font-semibold">
+        <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-xs uppercase tracking-wider opacity-80 mb-1 font-semibold">
             Next Low
           </div>
-          <LoadingShimmer isLoading={loading}>
-            <div className="tide-prediction-time text-base font-semibold mb-1">
+  
+            <div className="text-base font-semibold mb-1">
               {tideData?.next_low?.time || '--'}
             </div>
-          </LoadingShimmer>
-          <LoadingShimmer isLoading={loading}>
-            <div className="tide-prediction-height text-sm opacity-80">
+          
+  
+            <div className="text-sm opacity-80">
               {tideData?.next_low?.height ? `${tideData.next_low.height} ft` : '-- ft'}
             </div>
-          </LoadingShimmer>
+          
         </div>
       </div>
     </Card>

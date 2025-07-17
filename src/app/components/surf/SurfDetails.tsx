@@ -23,18 +23,16 @@ export function SurfDetails({ data, loading }: SurfDetailsProps) {
   const details = data?.details;
 
   return (
-    <div className="details-grid grid grid-cols-2 gap-4 mb-8">
+    <div className="grid grid-cols-2 gap-4 mb-8">
       <DetailCard
         label="Wave Height"
         value={details?.wave_height_ft || '--'}
         unit="ft"
         loading={loading}
-        visualBackground={
-          <div 
-            id="waveHeightBg"
-            className="absolute inset-0 pointer-events-none"
-          />
-        }
+        animationType="wave-height"
+        animationProps={{ 
+          waveHeight: details?.wave_height_ft || 0 
+        }}
       />
       
       <DetailCard
@@ -42,12 +40,12 @@ export function SurfDetails({ data, loading }: SurfDetailsProps) {
         value={details?.wave_period_sec || '--'}
         unit="sec"
         loading={loading}
-        visualBackground={
-          <div 
-            id="periodVisualContainer"
-            className="period-visual-container absolute inset-0 overflow-hidden pointer-events-none"
-          />
-        }
+        animationType="swell"
+        animationProps={{ 
+          direction: details?.swell_direction_deg || 90,
+          period: details?.wave_period_sec || 8,
+          intensity: 0.2
+        }}
       >
         {details?.swell_direction_deg && !loading && (
           <DirectionArrow degrees={details.swell_direction_deg} />
@@ -59,12 +57,12 @@ export function SurfDetails({ data, loading }: SurfDetailsProps) {
         value={details?.wind_speed_kts ? Math.round(details.wind_speed_kts) : '--'}
         unit="kts"
         loading={loading}
-        visualBackground={
-          <div 
-            id="windLinesContainer"
-            className="wind-lines-container absolute inset-0 overflow-hidden pointer-events-none"
-          />
-        }
+        animationType="wind"
+        animationProps={{
+          direction: details?.wind_direction_deg || 0,
+          speed: details?.wind_speed_kts || 5,
+          intensity: 0.3
+        }}
       >
         {details?.wind_direction_deg && !loading && (
           <DirectionArrow degrees={details.wind_direction_deg} />
@@ -76,6 +74,7 @@ export function SurfDetails({ data, loading }: SurfDetailsProps) {
         value={data?.weather?.water_temperature_f ? Math.round(data.weather.water_temperature_f) : '--'}
         unit="°F"
         loading={loading}
+        animationType="none"
       >
         <Droplet strokeWidth={1} className="ml-2" />
       </DetailCard>

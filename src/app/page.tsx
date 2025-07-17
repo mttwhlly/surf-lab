@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import Image from 'next/image';
 import { useSurfData } from './hooks/useSurfData';
-import { useAnimations } from './hooks/useAnimations';
 import { WeatherHeader } from './components/surf/WeatherHeader';
 import { SurfDetails } from './components/surf/SurfDetails';
 import { TideCard } from './components/surf/TideCard';
@@ -12,17 +10,6 @@ import { ErrorCard } from './components/ui/ErrorCard';
 
 export default function SurfApp() {
   const { data: surfData, loading: isLoading, error } = useSurfData();
-  const { initializeAnimations, updateVisualizations } = useAnimations();
-
-  useEffect(() => {
-    initializeAnimations();
-  }, [initializeAnimations]);
-
-  useEffect(() => {
-    if (surfData && !isLoading) {
-      updateVisualizations(surfData);
-    }
-  }, [surfData, isLoading, updateVisualizations]);
 
   return (
     <div className='pb-20'>
@@ -37,9 +24,8 @@ export default function SurfApp() {
         />
       </div>
 
-
       {/* Main Container */}
-      <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[300px] shadow-lg rounded-3xl glass-effect">
+      <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[300px] shadow-lg rounded-3xl">
         {/* Weather Header */}
         <WeatherHeader data={surfData} loading={isLoading} />
 
@@ -48,10 +34,6 @@ export default function SurfApp() {
 
         {/* Content */}
         <div className={isLoading ? 'opacity-50' : ''}>
-          {/* Status Card */}
-          {/* TODO: Implement Status Card.. or not */}
-          {/* <StatusCard data={surfData} loading={isLoading} /> */}
-
           {/* Surf Details Grid */}
           <SurfDetails data={surfData} loading={isLoading} />
 
