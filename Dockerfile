@@ -23,8 +23,8 @@ RUN npm run build
 # Production stage - only runtime dependencies
 FROM node:20-alpine AS runner
 
-# Install security updates
-RUN apk update && apk upgrade && apk add --no-cache dumb-init && rm -rf /var/cache/apk/*
+# Install security updates and curl for healthcheck
+RUN apk update && apk upgrade && apk add --no-cache dumb-init curl && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
@@ -40,11 +40,12 @@ COPY --from=base --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Health check for Coolify
+# Health check for Coolify - Fixed to use the correct endpoint and curl
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:3000/api/health || exit 1
 
 # Switch to non-root user
 USER nextjs

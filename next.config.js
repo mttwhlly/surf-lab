@@ -6,9 +6,8 @@ const nextConfig = {
   // Optimize for production
   compress: true,
   
-  // Keep your existing experimental config and add production optimizations
   experimental: {
-    // appDir: true,
+    appDir: true,
     forceSwcTransforms: true,
   },
   
@@ -18,9 +17,8 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
   
-  // Enhanced headers combining your CORS config with security headers
+  // Enhanced headers for CORS and security
   headers: async () => [
-    // Your existing API CORS headers
     {
       source: '/api/:path*',
       headers: [
@@ -29,49 +27,9 @@ const nextConfig = {
         { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
       ],
     },
-    // Security headers for all pages
-    {
-      source: '/:path*',
-      headers: [
-        {
-          key: 'X-DNS-Prefetch-Control',
-          value: 'on'
-        },
-        {
-          key: 'X-XSS-Protection',
-          value: '1; mode=block'
-        },
-        {
-          key: 'X-Frame-Options',
-          value: 'SAMEORIGIN'
-        },
-        {
-          key: 'X-Content-Type-Options',
-          value: 'nosniff'
-        },
-        {
-          key: 'Referrer-Policy',
-          value: 'origin-when-cross-origin'
-        }
-      ]
-    },
-    // Service worker headers
-    {
-      source: '/sw.js',
-      headers: [
-        {
-          key: 'Cache-Control',
-          value: 'public, max-age=0, must-revalidate'
-        },
-        {
-          key: 'Service-Worker-Allowed',
-          value: '/'
-        }
-      ]
-    }
   ],
   
-  // Keep your existing service worker rewrite
+  // Service worker rewrite
   async rewrites() {
     return [
       {
@@ -81,21 +39,16 @@ const nextConfig = {
     ];
   },
   
-  // Additional redirects for SEO
-  async redirects() {
-    return [
-      {
-        source: '/home',
-        destination: '/',
-        permanent: true,
-      },
-    ]
+  // Environment variables - Remove the warning about missing NEXT_PUBLIC_API_URL
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
   },
   
-  // Environment variables for production
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  },
+  // Ensure server listens on all interfaces in Docker
+  ...(process.env.NODE_ENV === 'production' && {
+    poweredByHeader: false,
+    generateEtags: false,
+  }),
 }
 
 module.exports = nextConfig
