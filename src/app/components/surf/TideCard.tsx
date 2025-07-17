@@ -36,15 +36,11 @@ export function TideCard({ data, loading }: TideCardProps) {
         </LoadingShimmer>
       </div>
       
-      <div className="tide-visual-container relative h-32 my-4 bg-white/5 rounded-2xl overflow-hidden border border-white/10">
-        {tideData && !loading && (
-          <TideVisualizer
-            currentHeight={tideData.current_height_ft}
-            state={tideData.state}
-            nextHigh={tideData.next_high}
-            nextLow={tideData.next_low}
-          />
-        )}
+<div 
+        id="tideVisualContainer"
+        className="tide-visual-container relative h-32 my-4 bg-white/5 rounded-2xl overflow-hidden border border-white/10"
+      >
+        {/* Tide chart will be rendered here by JavaScript */}
       </div>
       
       <div className="tide-predictions grid grid-cols-2 gap-4 relative z-10">

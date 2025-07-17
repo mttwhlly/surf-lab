@@ -1,76 +1,25 @@
 @import "tailwindcss";
 
-/* Font support for Inter Variable */
-/* @supports (font-variation-settings: normal) {
-  :root {
-    font-family: var(--font-geist), sans-serif;
-  }
-} */
-
-/* Critical: Glass morphism base class */
-@layer utilities {
-  .glass-effect {
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    background: rgba(255, 255, 255, 0.4) !important;
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-  }
-
-/* Fix for theme adjustments */
-body.dark-gradient .glass-effect {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff;
+/* Font Variables */
+:root {
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-body.light-gradient .glass-effect {
-  background: rgba(255, 255, 255, 0.25) !important;
-  color: #000000;
-}
-  
-  /* Loading shimmer effect */
-  .loading-shimmer {
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .loading-shimmer::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.4) 50%,
-      transparent 100%
-    );
-    animation: shimmer 2s ease-in-out infinite;
-    pointer-events: none;
-  }
-  
-  /* Wave height visual background */
-  .wave-height-bg {
-    background: linear-gradient(to bottom, 
-      transparent 0%, 
-      transparent calc(var(--fill-height) - 0.5px), 
-      rgba(0, 0, 0, 1) calc(var(--fill-height) - 0.5px), 
-      rgba(0, 0, 0, 1) calc(var(--fill-height) + 0.5px), 
-      transparent calc(var(--fill-height) + 0.5px), 
-      transparent 100%);
-  }
-  
-  /* Direction arrows */
-  .direction-arrow {
-    transition: all 0.3s ease;
-    transform-origin: center;
-  }
+/* Base styles */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
-/* Enhanced body styles for sky gradients */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-inter);
+}
+
+/* Enhanced body styles */
 body {
   min-height: 100vh;
   transition: background 3s ease-in-out;
@@ -81,16 +30,58 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background-color: #ffffff;
+  color: #000000;
 
+  /* Subtle dot pattern background */
   background-image: 
-        radial-gradient(circle at center, rgba(0, 0, 0, 0.8) 0.5px, transparent 0.5px);
-    background-size: 32px 32px;
-    background-position: 0 0;
-    background-repeat: repeat;
-    background-attachment: fixed;
+    radial-gradient(circle at center, rgba(0, 0, 0, 0.8) 0.5px, transparent 0.5px);
+  background-size: 32px 32px;
+  background-position: 0 0;
+  background-repeat: repeat;
+  background-attachment: fixed;
 }
 
-/* Weather icon styling - system emojis only */
+/* Critical: Glass morphism base class */
+.glass-effect {
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Loading shimmer effect */
+.loading-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Direction arrows */
+.direction-arrow {
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+/* Weather icon styling */
 .weather-icon {
   font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Arial, sans-serif;
   font-style: normal;
@@ -106,125 +97,12 @@ body {
   font-feature-settings: normal;
 }
 
-/* Full width wave container */
-.wave-container {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.6;
-  mix-blend-mode: overlay;
-  transform: translateZ(0);
-  will-change: transform;
+/* Animation definitions */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-#waveCanvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* Ensure content is readable over gradients */
-.container, .top-controls {
-  position: relative;
-  z-index: 10;
-}
-
-/* Adjust for dark gradients (night, storms, etc.) */
-body.dark-gradient .glass-effect {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff;
-}
-
-body.dark-gradient .location,
-body.dark-gradient .rating,
-body.dark-gradient .detail-value {
-  color: #ffffff;
-}
-
-body.dark-gradient .weather-icon {
-  color: #ffffff;
-}
-
-/* Adjust for light gradients (midday, fog, etc.) */
-body.light-gradient .glass-effect {
-  background: rgba(255, 255, 255, 0.25) !important;
-  color: #000000;
-}
-
-body.light-gradient .location,
-body.light-gradient .rating,
-body.light-gradient .detail-value {
-  color: #000000;
-}
-
-body.light-gradient .weather-icon {
-  color: #000000;
-}
-
-/* Text contrast adjustments */
-.rating, .location, .detail-value {
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* Gradient-specific adjustments */
-body.sunset .rating,
-body.sunrise .rating,
-body.golden-hour .rating {
-  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-body.midday .rating,
-body.light-clouds .rating,
-body.fog .rating {
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* Top controls adjustments */
-body.dark-gradient .top-controls .btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-body.light-gradient .top-controls .btn {
-  background: rgba(255, 255, 255, 0.8);
-  color: #000000;
-  border-color: rgba(0, 0, 0, 0.2);
-}
-
-/* Bell icon specific styles */
-.bell-icon {
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Arial, sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #000;
-  transition: all 0.3s ease;
-  font-variant-emoji: presentation;
-  -webkit-font-feature-settings: normal;
-  font-feature-settings: normal;
-  position: relative;
-}
-
-/* Animation definitions for SURF LAB */
-
-/* Spinner Animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Toast Slide In Animation */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -236,165 +114,53 @@ body.light-gradient .top-controls .btn {
   }
 }
 
-/* Wind Lines Animation */
-.wind-line {
-  position: absolute;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 1px;
-  animation: windFlow linear infinite;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-@keyframes windFlow {
-  0% { 
-    transform: translateX(-100px) translateY(0); 
-    opacity: 0; 
-  }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { 
-    transform: translateX(300px) translateY(0); 
-    opacity: 0; 
-  }
-}
-
-/* Period Wave Animation */
-.period-wave {
-  position: absolute;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 1px;
-  animation: periodWave ease-in-out infinite;
-}
-
-@keyframes periodWave {
-  0%, 100% { 
-    transform: translateY(0) scaleX(1); 
-    opacity: 0.3; 
-  }
-  50% { 
-    transform: translateY(-10px) scaleX(1.2); 
-    opacity: 0.8; 
-  }
-}
-
-/* Period Flow Animation - moves linearly */
-@keyframes periodFlow {
-  0% { 
-    transform: translateX(-50px); 
-    opacity: 0.3; 
-  }
-  50% { 
-    transform: translateX(100px); 
-    opacity: 0.8; 
-  }
-  100% { 
-    transform: translateX(250px); 
-    opacity: 0.3; 
-  }
-}
-
-/* Bell ring animation */
-@keyframes bellRing {
-  0%, 100% { transform: rotate(0deg); }
-  10%, 30%, 50%, 70%, 90% { transform: rotate(-3deg); }
-  20%, 40%, 60%, 80% { transform: rotate(3deg); }
-}
-
-/* Component-specific styles */
-
-/* Top Controls - EXACT MATCH */
-.top-controls {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  padding-top: calc(15px + env(safe-area-inset-top));
-  background: transparent;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid #000;
-}
-
-/* Container and Layout - EXACT MATCH */
+/* Component-specific styles that work with Tailwind 4 */
 .container {
-  max-width: 400px;
+  max-width: 28rem; /* equivalent to max-w-md */
   margin: 0 auto;
-  /* padding: 20px; */
   position: relative;
-  z-index: 2;
-  /* min-height: 100vh; */
-  /* padding-top: calc(100px + env(safe-area-inset-top)); */
+  z-index: 20;
+  min-height: 100vh;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 2rem;
 }
 
 .location {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 10px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-inter);
 }
 
 .timestamp {
-  font-size: 14px;
+  font-size: 0.875rem;
   opacity: 0.8;
   font-weight: 400;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-/* Status Card */
-.status-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 25px;
-  margin-bottom: 30px;
-  text-align: center;
-  border: 1px solid #000;
+  font-family: var(--font-inter);
 }
 
 .rating {
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 0.5rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.05em;
+  font-family: var(--font-inter);
 }
 
 .duration {
-  font-size: 16px;
+  font-size: 1rem;
   opacity: 0.9;
   font-weight: 500;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-/* Weather Card */
-.weather-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 30px;
-  text-align: center;
-  border: 1px solid #000;
-}
-
-.weather-description {
-  font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 15px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  text-transform: capitalize;
+  font-family: var(--font-inter);
 }
 
 .temp-item {
@@ -402,208 +168,80 @@ body.light-gradient .top-controls .btn {
 }
 
 .temp-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.05em;
   opacity: 0.8;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
   font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-inter);
 }
 
 .temp-value {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-inter);
   display: flex;
   justify-content: center;
-  align-content: center;
+  align-items: center;
 }
 
 .temp-unit {
-  font-size: 16px;
+  font-size: 1rem;
   opacity: 0.7;
-  margin-left: 2px;
+  margin-left: 0.25rem;
 }
 
-/* Tide Card */
-.tide-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 30px;
-  border: 1px solid #000;
-  position: relative;
-  overflow: hidden;
-}
-
-.tide-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-  position: relative;
-  z-index: 10;
-}
-
-.tide-icon {
-  font-size: 24px;
-}
-
-.tide-visual-container {
-  position: relative;
-  height: 120px;
-  margin: 15px 0;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-  overflow: hidden;
-}
-
-.tide-wave-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.tide-markers {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.tide-marker {
-  position: absolute;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 3px 6px;
-  border-radius: 6px;
-  transform: translateX(-50%);
-}
-
-.tide-current {
-  text-align: center;
-  margin-bottom: 15px;
-  position: relative;
-  z-index: 10;
-}
-
-.tide-height {
-  font-size: 24px;
-  font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  margin-bottom: 5px;
-}
-
-.tide-state {
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.8;
-  font-weight: 500;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-.tide-predictions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  position: relative;
-  z-index: 10;
-}
-
-.tide-prediction {
-  text-align: center;
-  padding: 15px;
-  border-radius: 15px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.tide-prediction-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.8;
-  margin-bottom: 5px;
-  font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-.tide-prediction-time {
-  font-size: 16px;
-  font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  margin-bottom: 3px;
-}
-
-.tide-prediction-height {
-  font-size: 14px;
-  opacity: 0.8;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-/* Detail Items */
 .details-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
 .detail-item {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 15px;
-  padding: 20px;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  padding: 1.25rem;
   text-align: center;
-  border: 1px solid #000;
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.detail-visual-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
+.detail-item:hover {
+  transform: scale(1.05);
 }
 
-.detail-label, .tide-title {
-  font-size: 12px;
+.detail-label {
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.05em;
   opacity: 0.8;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
   font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   position: relative;
   z-index: 10;
+  font-family: var(--font-inter);
 }
 
 .detail-value {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-inter);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0.25rem;
   position: relative;
   z-index: 10;
 }
@@ -611,127 +249,181 @@ body.light-gradient .top-controls .btn {
 .detail-value span {
   transition: all 0.3s ease;
   opacity: 0.7;
-  cursor: help;
 }
 
 .detail-value:hover span {
   opacity: 1;
-  transform: scale(1.15);
+  transform: scale(1.1);
 }
 
-/* Visual Effects Containers */
-.wind-lines-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.tide-card {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+  position: relative;
   overflow: hidden;
-  pointer-events: none;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.period-visual-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.tide-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 10;
+}
+
+.tide-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-family: var(--font-inter);
+}
+
+.tide-current {
+  text-align: center;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.tide-height {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-family: var(--font-inter);
+}
+
+.tide-state {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  font-weight: 500;
+  font-family: var(--font-inter);
+}
+
+.tide-visual-container {
+  position: relative;
+  height: 8rem;
+  margin: 1rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
   overflow: hidden;
-  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Loading and Error States */
+.tide-predictions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.tide-prediction {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tide-prediction-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  font-family: var(--font-inter);
+}
+
+.tide-prediction-time {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--font-inter);
+  margin-bottom: 0.25rem;
+}
+
+.tide-prediction-height {
+  font-size: 0.875rem;
+  opacity: 0.8;
+  font-family: var(--font-inter);
+}
+
+/* Loading states */
 .loading {
   display: none;
   text-align: center;
-  margin: 40px 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 2.5rem 0;
   font-weight: 500;
+  font-family: var(--font-inter);
 }
 
 .spinner {
   border: 3px solid rgba(255, 255, 255, 0.3);
   border-top: 3px solid white;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 2.5rem;
+  height: 2.5rem;
   animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
+  margin: 0 auto 1.25rem;
 }
 
 .error {
   background: rgba(248, 113, 113, 0.2);
   border: 1px solid rgba(248, 113, 113, 0.5);
   color: #fca5a5;
-  padding: 20px;
-  border-radius: 15px;
-  margin: 20px 0;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  margin: 1.25rem 0;
   text-align: center;
   display: none;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-inter);
   font-weight: 500;
-}
-
-.tide-visual-container {
-  position: relative;
-  height: 120px;
-  margin: 15px 0;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 15px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.tide-chart-svg {
-  width: 100%;
-  height: 100%;
 }
 
 /* Responsive Design */
 @media (max-width: 480px) {
   .container {
-    padding: 15px;
-    padding-top: calc(70px + env(safe-area-inset-top));
-  }
-  
-  .status-card, .weather-card, .tide-card {
-    padding: 20px;
-  }
-  
-  .top-controls {
-    padding: 10px 15px;
-    padding-top: calc(10px + env(safe-area-inset-top));
+    padding: 0.9375rem;
+    padding-top: calc(4.375rem + env(safe-area-inset-top));
   }
   
   .detail-value {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
   
-  .detail-value span {
-    font-size: 1em;
-  }
-
   .weather-icon {
-    font-size: 36px;
+    font-size: 2.25rem;
   }
 
   .temp-value {
-    font-size: 24px;
+    font-size: 1.5rem;
   }
 
   .tide-height {
-    font-size: 24px;
+    font-size: 1.5rem;
   }
 
   .tide-predictions {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 0.625rem;
   }
 
   .tide-visual-container {
-    height: 100px;
+    height: 6.25rem;
   }
 }
 
@@ -746,10 +438,6 @@ body.light-gradient .top-controls .btn {
   .detail-value span {
     transition: none !important;
   }
-
-  .wind-line, .period-wave {
-    animation: none !important;
-  }
   
   .loading-shimmer::after {
     animation: none !important;
@@ -758,7 +446,7 @@ body.light-gradient .top-controls .btn {
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .status-card, .detail-item, .weather-card, .tide-card {
+  .detail-item, .tide-card {
     border-width: 2px;
     border-color: rgba(255, 255, 255, 0.8);
   }
@@ -770,15 +458,10 @@ body.light-gradient .top-controls .btn {
     background: white !important;
     color: black !important;
   }
-  
-  .top-controls {
-    display: none;
-  }
 }
 
 /* Ensure proper rendering on all platforms */
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
-  .bell-icon,
   .weather-icon {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
