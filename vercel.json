@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/refresh-forecast",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-forecast", 
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-forecast",
+      "schedule": "0 17 * * *" 
+    },
+    {
+      "path": "/api/cron/refresh-forecast",
+      "schedule": "0 20 * * *"
+    }
+  ]
+}
