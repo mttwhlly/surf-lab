@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/request-forecast",
-      "schedule": "0 9,13 * * *"
-    },
-    {
-      "path": "/api/cron/request-forecast", 
-      "schedule": "0 17 * * *"
+      "path": "/api/admin/refresh-forecast",
+      "schedule": "0 10 * * *"
     }
   ]
 }
