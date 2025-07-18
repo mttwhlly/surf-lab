@@ -17,12 +17,12 @@ export default function SurfApp() {
   return (
     <div className='flex flex-col items-center justify-start min-h-screen mb-12'>
       {/* Top Controls */}
-      <div className="m-8">
+      <div className="mt-8">
         <Image 
           src="/wave-logo.svg"
           alt="Surf Lab Logo"
-          width={48}
-          height={48}
+          width={64}
+          height={64}
           priority
         />
       </div>
