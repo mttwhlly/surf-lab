@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/request-forecast",
-      "schedule": "0 5,9,13,17 * * *"
+      "schedule": "0 9,13 * * *"
+    },
+    {
+      "path": "/api/cron/request-forecast", 
+      "schedule": "0 17 * * *"
     }
   ]
 }
