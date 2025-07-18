@@ -1,20 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SurfData } from '../types/surf';
 
 export function useSurfData() {
-  const [data, setData] = useState<SurfData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+    dataUpdatedAt
+  } = useQuery({
+    queryKey: ['surfData'],
+    queryFn: async (): Promise<SurfData> => {
       const response = await fetch('/api/surfability', {
-        cache: 'no-store',
         headers: {
           'Accept': 'application/json',
         },
@@ -24,41 +26,42 @@ export function useSurfData() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      setData(result);
-    } catch (err) {
-      console.error('Error fetching surf data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch surf data');
-    } finally {
-      setLoading(false);
+      return response.json();
+    },
+    // Adaptive refetch based on surf quality
+    refetchInterval: (data) => {
+      if (!data) return 5 * 60 * 1000; // 5 minutes default
+      
+      // More frequent updates for good conditions
+      if (data.score >= 70) return 2 * 60 * 1000; // 2 minutes
+      if (data.score >= 50) return 3 * 60 * 1000; // 3 minutes
+      return 5 * 60 * 1000; // 5 minutes for poor conditions
+    },
+    // Stale time based on conditions - good surf = shorter stale time
+    staleTime: (data) => {
+      if (!data) return 2 * 60 * 1000;
+      return data.score >= 60 ? 1 * 60 * 1000 : 3 * 60 * 1000;
     }
-  }, []);
+  });
 
-  useEffect(() => {
-    fetchData();
-    
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(fetchData, 5 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  // Smart prefetch when conditions might be changing
+  const prefetchIfNeeded = () => {
+    if (data?.score && data.score >= 40 && data.score <= 70) {
+      // Marginal conditions - prefetch more aggressively
+      queryClient.prefetchQuery({
+        queryKey: ['surfData'],
+        staleTime: 30 * 1000 // 30 seconds
+      });
+    }
+  };
 
-  // Refresh on focus
-  useEffect(() => {
-    const handleFocus = () => {
-      if (!document.hidden) {
-        fetchData();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleFocus);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleFocus);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: fetchData };
+  return {
+    data: data || null,
+    loading: isLoading,
+    error: error?.message || null,
+    refetch,
+    isRefetching,
+    lastUpdated: dataUpdatedAt,
+    prefetchIfNeeded
+  };
 }

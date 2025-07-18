@@ -292,8 +292,25 @@ async function fetchTideData(): Promise<TideData> {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Create ETag based on current 5-minute window
+    const now = Date.now();
+    const fiveMinuteWindow = Math.floor(now / (5 * 60 * 1000));
+    const etag = `"surf-${fiveMinuteWindow}"`;
+    
+    // Check if client has current version
+    const ifNoneMatch = request.headers.get('if-none-match');
+    if (ifNoneMatch === etag) {
+      return new NextResponse(null, { 
+        status: 304,
+        headers: {
+          'ETag': etag,
+          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300'
+        }
+      });
+    }
+
     // Fetch tide data
     const tideData = await fetchTideData();
     
@@ -391,7 +408,13 @@ export async function GET() {
       },
     };
     
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        'ETag': etag,
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        'Vary': 'Accept-Encoding'
+      }
+    });
     
   } catch (error) {
     console.error('API Error:', error);

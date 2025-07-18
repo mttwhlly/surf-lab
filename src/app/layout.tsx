@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Lacquer } from 'next/font/google'
+import { Lacquer } from 'next/font/google';
+import { QueryProvider } from './providers/QueryProvider';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import './globals.css';
 
 const lacquer = Lacquer({
@@ -18,20 +21,7 @@ export const metadata: Metadata = {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Dutch - AI Surf Report',
-  }
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#0077cc',
-}
+};
 
 export default function RootLayout({
   children,
@@ -41,7 +31,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${lacquer.className} antialiased`}>
       <body>
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
