@@ -36,6 +36,7 @@ export function useSurfData() {
     refetchIntervalInBackground: false,
   });
 
+
   return {
     data: data || null,
     loading: isLoading,
