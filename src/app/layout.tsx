@@ -15,7 +15,7 @@ const lacquer = Lacquer({
 
 export const metadata: Metadata = {
   title: 'Dutch - AI Surf Report',
-  description: 'St. Augustine, FL surf report powered by AI',
+  description: 'St. Augustine surf report powered by AI',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/icon-192.png',
