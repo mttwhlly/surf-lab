@@ -69,6 +69,7 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   return (
 
         <div className="prose prose-lg mb-6">
+            <pre className="text-center pt-4 pb-8 uppercase text-gray-500 tracking-wide">reported {formatTimeAgo(report?.timestamp || '')}</pre>
           <p className="text-gray-800 leading-relaxed text-2xl md:text-3xl whitespace-pre-wrap">
             {report?.report || 'Loading surf report...'}
           </p>
