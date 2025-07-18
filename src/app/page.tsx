@@ -13,7 +13,6 @@ export default function SurfApp() {
     error: surfError,
     isRefetching,
     lastUpdated,
-    prefetchIfNeeded
   } = useSurfData();
   
   const { 

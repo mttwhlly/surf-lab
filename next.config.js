@@ -5,8 +5,8 @@ const nextConfig = {
   
   // Optimize for production
   experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react'],
+    // optimizeCss: true,
+    // optimizePackageImports: ['lucide-react'],
   },
   images: {
     formats: ['image/webp', 'image/avif'],
