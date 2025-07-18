@@ -21,12 +21,22 @@ export async function GET(request: NextRequest) {
     
     // Initialize database on first run
     await initializeDatabase();
-    
-    // Check cache first
-    const cachedReport = await getCachedReport();
-    if (cachedReport) {
-      console.log('📋 Returning cached report');
-      return NextResponse.json(cachedReport);
+
+    // Check for force refresh parameter
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.get('force') === 'true';
+
+    if (forceRefresh) {
+      console.log('⚡ Force refresh requested - skipping cache');
+    }
+
+    // Check cache first (unless forcing refresh)  
+    if (!forceRefresh) {
+      const cachedReport = await getCachedReport();
+      if (cachedReport) {
+        console.log('📋 Returning cached report');
+        return NextResponse.json(cachedReport);
+      }
     }
 
     console.log('🌊 Generating new AI report...');
@@ -53,7 +63,7 @@ export async function GET(request: NextRequest) {
     const { object: aiReport } = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: surfReportSchema,
-              prompt: `
+      prompt: `
         Generate a friendly, conversational surf report for St. Augustine, Florida based on these current conditions:
 
         🌊 Wave Height: ${surfData.details.wave_height_ft} ft
