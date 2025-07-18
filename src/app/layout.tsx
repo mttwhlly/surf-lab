@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google'
+import { Inter, Lacquer } from 'next/font/google'
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin', 'latin-ext'],
   variable: '--font-inter',
   weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  preload: true,
+})
+
+const lacquer = Lacquer({
+  subsets: ['latin'],
+  variable: '--font-lacquer',
+  weight: '400',
   display: 'swap',
   preload: true,
 })
@@ -39,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.className} antialiased`}>
+    <html lang="en" className={`${lacquer.className} antialiased`}>
       <body>
         {children}
       </body>

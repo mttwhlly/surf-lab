@@ -69,7 +69,7 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   return (
 
         <div className="prose prose-lg mb-6">
-          <p className="text-gray-800 leading-relaxed">
+          <p className="text-gray-800 leading-relaxed text-xl md:text-3xl">
             {report?.report || 'Loading surf report...'}
           </p>
         </div>

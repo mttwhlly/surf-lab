@@ -15,9 +15,9 @@ export default function SurfApp() {
   const { report: surfReport, loading: reportLoading, error: reportError } = useSurfReport();
 
   return (
-    <div className='flex flex-col items-center justify-start min-h-screen'>
+    <div className='flex flex-col items-center justify-start min-h-screen mb-12'>
       {/* Top Controls */}
-      <div className="m-4">
+      <div className="m-8">
         <Image 
           src="/wave-logo.svg"
           alt="Surf Lab Logo"
