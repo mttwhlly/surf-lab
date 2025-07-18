@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
@@ -7,36 +7,13 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
-  .detail-value span {
-    transition: none !important;
-  }
-  
-  .loading-shimmer::after {
-    animation: none !important;
-  }
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .detail-item, .tide-card {
-    border-width: 2px;
-    border-color: rgba(255, 255, 255, 0.8);
-  }
-}
 
 /* Print styles */
 @media print {
   body {
     background: white !important;
     color: black !important;
-  }
-}
-
-/* Ensure proper rendering on all platforms */
-@media screen and (-webkit-min-device-pixel-ratio: 0) {
-  .weather-icon {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 }

@@ -40,16 +40,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.className} antialiased`}>
-      <body className={`
-        font-sans 
-        text-black 
-        min-h-screen 
-        transition-all 
-        duration-[3000ms] 
-        bg-white 
-        overflow-x-hidden 
-        antialiased
-      `}>
+      <body>
         {children}
       </body>
     </html>

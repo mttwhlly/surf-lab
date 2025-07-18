@@ -15,9 +15,9 @@ export default function SurfApp() {
   const { report: surfReport, loading: reportLoading, error: reportError } = useSurfReport();
 
   return (
-    <div className='pb-20'>
+    <div className='flex flex-col items-center justify-start min-h-screen'>
       {/* Top Controls */}
-      <div className="fixed top-0 left-0 right-0 mx-2 sm:mx-4 lg:mx-8 shadow-md z-50 flex p-4 mt-5 rounded-full justify-between items-center bg-white/80 backdrop-blur-xs border-b border-black/10">
+      <div className="m-4">
         <Image 
           src="/wave-logo.svg"
           alt="Surf Lab Logo"
@@ -28,7 +28,7 @@ export default function SurfApp() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[100px] shadow-lg rounded-3xl">
+      <div className="mt-8 px-4 max-w-3xl w-full">
 
         {/* AI Surf Report */}
         <SurfReportCard report={surfReport} loading={reportLoading} />

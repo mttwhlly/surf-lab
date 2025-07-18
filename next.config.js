@@ -7,8 +7,7 @@ const nextConfig = {
   compress: true,
   
   experimental: {
-    // appDir: true,
-    forceSwcTransforms: true,
+    // forceSwcTransforms: true,
   },
   
   // Image optimization
@@ -30,14 +29,14 @@ const nextConfig = {
   ],
   
   // Service worker rewrite
-  async rewrites() {
-    return [
-      {
-        source: '/sw.js',
-        destination: '/_next/static/sw.js',
-      },
-    ];
-  },
+  // async rewrites() {
+  //   return [
+  //     {
+  //       source: '/sw.js',
+  //       destination: '/_next/static/sw.js',
+  //     },
+  //   ];
+  // },
   
   // Environment variables - Remove the warning about missing NEXT_PUBLIC_API_URL
   env: {

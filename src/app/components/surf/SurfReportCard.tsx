@@ -1,9 +1,5 @@
 'use client';
 
-import { MessageCircle, Clock, Waves, Wind, Thermometer } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { LoadingShimmer } from '../ui/LoadingShimmer';
-
 interface SurfReport {
   id: string;
   timestamp: string;
@@ -57,15 +53,11 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   // Don't render anything if loading and no report
   if (loading && !report) {
     return (
-      <Card className="mb-8 text-left p-6">
-        <LoadingShimmer isLoading={true}>
-          <div className="space-y-3">
+
+          <div className="">
             <div className="h-4 bg-gray-200 rounded w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
-        </LoadingShimmer>
-      </Card>
+ 
     );
   }
 
@@ -75,17 +67,13 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   }
 
   return (
-    <Card className="mb-8 text-left p-6">
 
-      <LoadingShimmer isLoading={loading}>
-        <div className="prose prose-lg max-w-none mb-6">
-          <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+        <div className="prose prose-lg mb-6">
+          <p className="text-gray-800 leading-relaxed">
             {report?.report || 'Loading surf report...'}
           </p>
         </div>
-      </LoadingShimmer>
 
     
-    </Card>
   );
 }
