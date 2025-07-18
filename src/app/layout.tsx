@@ -1,14 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Lacquer } from 'next/font/google'
+import { Lacquer } from 'next/font/google'
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin', 'latin-ext'],
-  variable: '--font-inter',
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-  preload: true,
-})
 
 const lacquer = Lacquer({
   subsets: ['latin'],
@@ -19,8 +11,8 @@ const lacquer = Lacquer({
 })
 
 export const metadata: Metadata = {
-  title: 'SURF LAB',
-  description: 'Real-time surf conditions with wave visualization',
+  title: 'Dutch - AI Surf Report',
+  description: 'St. Augustine, FL surf report powered by AI',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/icon-192.png',
@@ -29,7 +21,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SURF LAB',
+    title: 'Dutch - AI Surf Report',
   }
 }
 

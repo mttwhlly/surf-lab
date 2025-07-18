@@ -53,11 +53,48 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   // Don't render anything if loading and no report
   if (loading && !report) {
     return (
-
-          <div className="">
-            <div className="h-4 bg-gray-200 rounded w-full"></div>
+<>
+        <div className="h-4"></div>
+          <div className="mb-12">
+            <div className="h-6 bg-gray-200 rounded w-1/3 block mx-auto"></div>
           </div>
- 
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="h-4"></div>
+          <div className="my-8"></div>
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+          <div className="my-8">
+            <div className="h-6 bg-gray-200 rounded w-full"></div>
+          </div>
+ </>
     );
   }
 
