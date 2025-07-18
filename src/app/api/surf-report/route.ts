@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         - Specific spot recommendations if relevant (Vilano Beach, St. Augustine Beach, etc.)
         - Any hazards or things to watch out for
 
-        IMPORTANT: Only recommend surf sessions during reasonable daylight hours (6 AM - 7 PM). If the best tide times are at night, suggest the next best daytime window or mention waiting until tomorrow's better daytime tides.
+        IMPORTANT: Only recommend upcoming surf sessions during reasonable daylight hours (6 AM - 7 PM). If the best tide times are at night, mention waiting until tomorrow's better daytime tides.
 
         Keep it conversational but informative, around 150-200 words.
       `,
