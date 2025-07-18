@@ -1,7 +1,23 @@
 import { neon } from '@neondatabase/serverless';
+import { config } from 'dotenv';
 
-// Use the auto-configured Neon database URL from Vercel Marketplace
-const sql = neon(process.env.NEON_DATABASE_URL!);
+// Load environment variables in development
+if (process.env.NODE_ENV !== 'production') {
+  config({ path: '.env.local' });
+}
+
+const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error(`
+    ❌ Missing database connection string!
+    
+    Please add to your environment variables:
+    NEON_DATABASE_URL="postgresql://username:password@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require"
+  `);
+}
+
+const sql = neon(databaseUrl);
 
 export interface SurfReport {
   id: string;
@@ -27,10 +43,9 @@ export interface SurfReport {
   cached_until: string;
 }
 
-// Initialize database (run once)
+// Initialize database
 export async function initializeDatabase() {
   try {
-    // Create table
     await sql`
       CREATE TABLE IF NOT EXISTS surf_reports (
         id TEXT PRIMARY KEY,
@@ -44,15 +59,9 @@ export async function initializeDatabase() {
       )
     `;
     
-    // Create indexes for performance
     await sql`
       CREATE INDEX IF NOT EXISTS idx_surf_reports_location_cached 
       ON surf_reports(location, cached_until DESC)
-    `;
-    
-    await sql`
-      CREATE INDEX IF NOT EXISTS idx_surf_reports_created_at 
-      ON surf_reports(created_at DESC)
     `;
     
     console.log('✅ Database initialized successfully');
@@ -62,7 +71,7 @@ export async function initializeDatabase() {
   }
 }
 
-// Get cached report (if still valid)
+// Get cached report
 export async function getCachedReport(location: string = 'St. Augustine, FL'): Promise<SurfReport | null> {
   try {
     const result = await sql`
@@ -93,7 +102,7 @@ export async function getCachedReport(location: string = 'St. Augustine, FL'): P
   }
 }
 
-// Save new report
+// Save report
 export async function saveReport(report: SurfReport): Promise<void> {
   try {
     await sql`
@@ -114,47 +123,5 @@ export async function saveReport(report: SurfReport): Promise<void> {
   } catch (error) {
     console.error('❌ Error saving report:', error);
     throw error;
-  }
-}
-
-// Get recent reports (for analytics/history)
-export async function getRecentReports(location: string = 'St. Augustine, FL', limit: number = 10): Promise<SurfReport[]> {
-  try {
-    const result = await sql`
-      SELECT * FROM surf_reports 
-      WHERE location = ${location}
-      ORDER BY timestamp DESC 
-      LIMIT ${limit}
-    `;
-    
-    return result.map(row => ({
-      id: row.id,
-      timestamp: row.timestamp,
-      location: row.location,
-      report: row.report,
-      conditions: row.conditions,
-      recommendations: row.recommendations,
-      cached_until: row.cached_until
-    }));
-  } catch (error) {
-    console.error('Error fetching recent reports:', error);
-    return [];
-  }
-}
-
-// Clean up old reports (run periodically)
-export async function cleanupOldReports(daysOld: number = 7): Promise<number> {
-  try {
-    const result = await sql`
-      DELETE FROM surf_reports 
-      WHERE created_at < NOW() - INTERVAL '${daysOld} days'
-    `;
-    
-    const deletedCount = result.length;
-    console.log(`🧹 Cleaned up ${deletedCount} old reports`);
-    return deletedCount;
-  } catch (error) {
-    console.error('Error cleaning up old reports:', error);
-    return 0;
   }
 }

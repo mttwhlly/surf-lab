@@ -7,7 +7,7 @@ const nextConfig = {
   compress: true,
   
   experimental: {
-    appDir: true,
+    // appDir: true,
     forceSwcTransforms: true,
   },
   
