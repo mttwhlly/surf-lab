@@ -2,14 +2,17 @@
 
 import Image from 'next/image';
 import { useSurfData } from './hooks/useSurfData';
+import { useSurfReport } from './hooks/useSurfReport';
 import { WeatherHeader } from './components/surf/WeatherHeader';
 import { SurfDetails } from './components/surf/SurfDetails';
 import { TideCard } from './components/surf/TideCard';
 import { StatusCard } from './components/surf/StatusCard';
+import { SurfReportCard } from './components/surf/SurfReportCard';
 import { ErrorCard } from './components/ui/ErrorCard';
 
 export default function SurfApp() {
-  const { data: surfData, loading: isLoading, error } = useSurfData();
+  const { data: surfData, loading: surfLoading, error: surfError } = useSurfData();
+  const { report: surfReport, loading: reportLoading, error: reportError } = useSurfReport();
 
   return (
     <div className='pb-20'>
@@ -25,21 +28,15 @@ export default function SurfApp() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[300px] shadow-lg rounded-3xl">
-        {/* Weather Header */}
-        <WeatherHeader data={surfData} loading={isLoading} />
+      <div className="max-w-md mx-auto mb-10 px-5 py-5 relative z-20 min-h-screen mt-[100px] shadow-lg rounded-3xl">
+
+        {/* AI Surf Report */}
+        <SurfReportCard report={surfReport} loading={reportLoading} />
 
         {/* Error Display */}
-        {error && <ErrorCard message={error} />}
-
-        {/* Content */}
-        <div className={isLoading ? 'opacity-50' : ''}>
-          {/* Surf Details Grid */}
-          <SurfDetails data={surfData} loading={isLoading} />
-
-          {/* Tide Card */}
-          <TideCard data={surfData} loading={isLoading} />
-        </div>
+        {(surfError || reportError) && (
+          <ErrorCard message={surfError || reportError || 'Unknown error'} />
+        )}
       </div>
     </div>
   );
