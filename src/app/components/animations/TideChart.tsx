@@ -1,4 +1,3 @@
-// Simple src/app/components/animations/TideChart.tsx
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
@@ -12,9 +11,9 @@ interface TideChartProps {
 export function TideChart({ tideData, className = '' }: TideChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Calculate where we are in the tide cycle using actual tide times
+  // Calculate tide phase with improved logic
   const tidePhase = useMemo(() => {
-    if (!tideData) return { phase: 0, amplitude: 1, midHeight: 2, currentHeight: 2 };
+    if (!tideData) return { phase: 0, amplitude: 1, midHeight: 2, currentHeight: 2, isRising: false };
 
     const now = new Date();
     
@@ -30,48 +29,51 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
     const amplitude = (highHeight - lowHeight) / 2;
     const midHeight = (highHeight + lowHeight) / 2;
 
-    // Determine which direction we're going based on which comes next
+    // Determine tide direction based on which comes next
     let phase = 0;
+    let isRising = false;
     
     const timeToNextHigh = nextHigh ? nextHigh.getTime() - now.getTime() : Infinity;
     const timeToNextLow = nextLow ? nextLow.getTime() - now.getTime() : Infinity;
     
-    if (timeToNextLow < timeToNextHigh) {
-      // Next event is LOW - we're falling from previous high to next low
-      if (prevHigh && nextLow) {
-        const totalTime = nextLow.getTime() - prevHigh.getTime();
-        const elapsedTime = now.getTime() - prevHigh.getTime();
-        const progress = Math.max(0, Math.min(1, elapsedTime / totalTime)); // 0 = at high, 1 = at low
-        
-        // Phase: π/2 (high) to -π/2 (low)
-        phase = (Math.PI / 2) - (progress * Math.PI);
-        
-        console.log('FALLING - Next event is LOW:', {
-          prevHigh: prevHigh.toLocaleTimeString(),
-          nextLow: nextLow.toLocaleTimeString(),
-          now: now.toLocaleTimeString(),
-          progress: (progress * 100).toFixed(1) + '%',
-          phase: phase.toFixed(2),
-          timeToLow: Math.round(timeToNextLow / (1000 * 60)) + ' minutes'
-        });
-      }
-    } else {
-      // Next event is HIGH - we're rising from previous low to next high
+    if (timeToNextHigh < timeToNextLow) {
+      // Next event is HIGH - we're RISING
+      isRising = true;
+      
       if (prevLow && nextHigh) {
         const totalTime = nextHigh.getTime() - prevLow.getTime();
         const elapsedTime = now.getTime() - prevLow.getTime();
-        const progress = Math.max(0, Math.min(1, elapsedTime / totalTime)); // 0 = at low, 1 = at high
+        const progress = Math.max(0, Math.min(1, elapsedTime / totalTime));
         
         // Phase: -π/2 (low) to π/2 (high)
         phase = (-Math.PI / 2) + (progress * Math.PI);
         
-        console.log('RISING - Next event is HIGH:', {
-          prevLow: prevLow.toLocaleTimeString(),
-          nextHigh: nextHigh.toLocaleTimeString(),
-          now: now.toLocaleTimeString(),
+        console.log('🌊 RISING TIDE:', {
+          from: prevLow.toLocaleTimeString(),
+          to: nextHigh.toLocaleTimeString(),
           progress: (progress * 100).toFixed(1) + '%',
           phase: phase.toFixed(2),
-          timeToHigh: Math.round(timeToNextHigh / (1000 * 60)) + ' minutes'
+          currentHeight: tideData.current_height_ft
+        });
+      }
+    } else {
+      // Next event is LOW - we're FALLING
+      isRising = false;
+      
+      if (prevHigh && nextLow) {
+        const totalTime = nextLow.getTime() - prevHigh.getTime();
+        const elapsedTime = now.getTime() - prevHigh.getTime();
+        const progress = Math.max(0, Math.min(1, elapsedTime / totalTime));
+        
+        // Phase: π/2 (high) to -π/2 (low)
+        phase = (Math.PI / 2) - (progress * Math.PI);
+        
+        console.log('🌊 FALLING TIDE:', {
+          from: prevHigh.toLocaleTimeString(),
+          to: nextLow.toLocaleTimeString(),
+          progress: (progress * 100).toFixed(1) + '%',
+          phase: phase.toFixed(2),
+          currentHeight: tideData.current_height_ft
         });
       }
     }
@@ -80,7 +82,8 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
       phase,
       amplitude,
       midHeight,
-      currentHeight: tideData.current_height_ft
+      currentHeight: tideData.current_height_ft,
+      isRising
     };
   }, [tideData]);
 
@@ -91,27 +94,21 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
     // Clear previous content
     svg.innerHTML = '';
 
-    const width = 1440; // 24 hours
+    const width = 1440; // 24 hours worth of pixels
     const height = 360;
     const verticalCenter = height / 2;
     const maxAmplitude = height * 0.35;
 
-    // Debug: Calculate where next tides should appear on chart
-    const now = new Date();
-    const nextLow = tideData.next_low ? new Date(tideData.next_low.timestamp) : null;
-    const nextHigh = tideData.next_high ? new Date(tideData.next_high.timestamp) : null;
+    // Debug: Log what we're about to draw
+    console.log('🎨 Drawing tide chart:', {
+      currentPhase: tidePhase.phase.toFixed(2),
+      amplitude: tidePhase.amplitude.toFixed(1),
+      midHeight: tidePhase.midHeight.toFixed(1),
+      isRising: tidePhase.isRising,
+      currentHeight: tidePhase.currentHeight
+    });
     
-    if (nextLow) {
-      const hoursToLow = (nextLow.getTime() - now.getTime()) / (1000 * 60 * 60);
-      const lowX = (width / 2) + (hoursToLow / 24) * width;
-      console.log(`Next LOW at ${nextLow.toLocaleTimeString()} should appear at X=${lowX.toFixed(0)} (${hoursToLow.toFixed(1)} hours from now)`);
-    }
-    
-    if (nextHigh) {
-      const hoursToHigh = (nextHigh.getTime() - now.getTime()) / (1000 * 60 * 60);
-      const highX = (width / 2) + (hoursToHigh / 24) * width;
-      console.log(`Next HIGH at ${nextHigh.toLocaleTimeString()} should appear at X=${highX.toFixed(0)} (${hoursToHigh.toFixed(1)} hours from now)`);
-    }
+    // Generate the tide curve
     let pathData = '';
     for (let x = 0; x <= width; x += 3) {
       // Center of chart (x = width/2) represents current time
@@ -119,11 +116,11 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
       const hoursFromNow = ((x - (width / 2)) / width) * 24; // -12 to +12 hours
       
       // Calculate the wave phase at this time point
-      // Current phase represents where we are NOW in the tidal cycle
+      // Use standard tidal period of 12.42 hours (lunar day / 2)
       const wavePhase = tidePhase.phase + (hoursFromNow * 2 * Math.PI) / 12.42;
       const tideHeight = tidePhase.midHeight + tidePhase.amplitude * Math.sin(wavePhase);
       
-      // Convert to SVG coordinates
+      // Convert to SVG coordinates (flip Y axis)
       const normalizedHeight = (tideHeight - tidePhase.midHeight) / tidePhase.amplitude;
       const y = verticalCenter - (normalizedHeight * maxAmplitude);
       
@@ -150,7 +147,7 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
     svg.appendChild(curvePath);
 
     // Add current time indicator (vertical dashed line at center)
-    const currentX = width / 2; // Center of chart is "now"
+    const currentX = width / 2;
     const currentLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     currentLine.setAttribute('stroke', '#000000');
     currentLine.setAttribute('stroke-width', '1.5');
@@ -163,7 +160,7 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
     currentLine.setAttribute('opacity', '0.8');
     svg.appendChild(currentLine);
 
-    // Add current height indicator (small circle)
+    // Add current height indicator (dot on the curve)
     const currentNormalizedHeight = (tidePhase.currentHeight - tidePhase.midHeight) / tidePhase.amplitude;
     const currentY = verticalCenter - (currentNormalizedHeight * maxAmplitude);
     
@@ -175,6 +172,64 @@ export function TideChart({ tideData, className = '' }: TideChartProps) {
     currentDot.setAttribute('stroke', '#ffffff');
     currentDot.setAttribute('stroke-width', '2');
     svg.appendChild(currentDot);
+
+    // Add directional arrow to show tide direction
+    const arrowSize = 8;
+    const arrowX = currentX + 20;
+    const arrowY = currentY;
+    
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    if (tidePhase.isRising) {
+      // Up arrow for rising tide
+      arrow.setAttribute('points', `${arrowX},${arrowY - arrowSize} ${arrowX - arrowSize/2},${arrowY + arrowSize/2} ${arrowX + arrowSize/2},${arrowY + arrowSize/2}`);
+      arrow.setAttribute('fill', '#22c55e'); // Green for rising
+    } else {
+      // Down arrow for falling tide
+      arrow.setAttribute('points', `${arrowX},${arrowY + arrowSize} ${arrowX - arrowSize/2},${arrowY - arrowSize/2} ${arrowX + arrowSize/2},${arrowY - arrowSize/2}`);
+      arrow.setAttribute('fill', '#ef4444'); // Red for falling
+    }
+    arrow.setAttribute('stroke', '#ffffff');
+    arrow.setAttribute('stroke-width', '1');
+    svg.appendChild(arrow);
+
+    // Add time labels at key points if tide data is available
+    if (tideData.next_high && tideData.next_low) {
+      const now = new Date();
+      
+      // Calculate positions for next high and low
+      const nextHigh = new Date(tideData.next_high.timestamp);
+      const nextLow = new Date(tideData.next_low.timestamp);
+      
+      const hoursToHigh = (nextHigh.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const hoursToLow = (nextLow.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      // Only show if within chart range (-12 to +12 hours)
+      if (hoursToHigh >= -12 && hoursToHigh <= 12) {
+        const highX = (width / 2) + (hoursToHigh / 24) * width;
+        const highLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        highLabel.setAttribute('x', highX.toString());
+        highLabel.setAttribute('y', '20');
+        highLabel.setAttribute('text-anchor', 'middle');
+        highLabel.setAttribute('font-size', '12');
+        highLabel.setAttribute('font-weight', 'bold');
+        highLabel.setAttribute('fill', '#000000');
+        highLabel.textContent = `H ${tideData.next_high.time}`;
+        svg.appendChild(highLabel);
+      }
+      
+      if (hoursToLow >= -12 && hoursToLow <= 12) {
+        const lowX = (width / 2) + (hoursToLow / 24) * width;
+        const lowLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lowLabel.setAttribute('x', lowX.toString());
+        lowLabel.setAttribute('y', (height - 10).toString());
+        lowLabel.setAttribute('text-anchor', 'middle');
+        lowLabel.setAttribute('font-size', '12');
+        lowLabel.setAttribute('font-weight', 'bold');
+        lowLabel.setAttribute('fill', '#000000');
+        lowLabel.textContent = `L ${tideData.next_low.time}`;
+        svg.appendChild(lowLabel);
+      }
+    }
 
   }, [tideData, tidePhase]);
 

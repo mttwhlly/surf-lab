@@ -11,9 +11,87 @@ const surfReportSchema = z.object({
     wetsuit_thickness: z.string().optional().describe('Wetsuit thickness needed (e.g., 3/2mm, 4/3mm)'),
     skill_level: z.enum(['beginner', 'intermediate', 'advanced']).describe('Who these conditions are best for'),
     best_spots: z.array(z.string()).optional().describe('Specific surf spots in St. Augustine area'),
-    timing_advice: z.string().optional().describe('Best time to surf today')
+    timing_advice: z.string().optional().describe('CURRENT real-time advice - when to surf TODAY from this moment forward')
   })
 });
+
+// Helper function to get next optimal surf window
+function getOptimalSurfTiming(surfData: any): string {
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // Parse tide times
+  const nextHigh = surfData.tides.next_high ? new Date(surfData.tides.next_high.timestamp) : null;
+  const nextLow = surfData.tides.next_low ? new Date(surfData.tides.next_low.timestamp) : null;
+  
+  let timingAdvice = '';
+  
+  // Check if tide is currently rising or falling
+  const isRising = surfData.details.tide_state.includes('Rising');
+  const isFalling = surfData.details.tide_state.includes('Falling');
+  
+  if (isRising && nextHigh) {
+    const hoursToHigh = (nextHigh.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const highHour = nextHigh.getHours();
+    
+    if (hoursToHigh > 0 && hoursToHigh <= 4 && highHour >= 6 && highHour <= 19) {
+      // Rising tide with good timing
+      timingAdvice = `Perfect timing! Tide is rising toward ${surfData.tides.next_high.time} - surf NOW through ${nextHigh.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })}`;
+    } else if (hoursToHigh > 4) {
+      timingAdvice = `Rising tide but peak is later. Good window in ${Math.round(hoursToHigh - 2)}-${Math.round(hoursToHigh)} hours`;
+    } else if (currentHour >= 6 && currentHour <= 18) {
+      timingAdvice = `Go NOW! Currently rising with good daylight`;
+    }
+  } else if (isFalling && nextLow) {
+    const hoursToLow = (nextLow.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursToLow > 2 && currentHour >= 6 && currentHour <= 18) {
+      timingAdvice = `Surf NOW! Still ${Math.round(hoursToLow)} hours before low tide`;
+    } else {
+      timingAdvice = `Wait for rising tide after ${surfData.tides.next_low.time}`;
+    }
+  }
+  
+  // Safety check for thunderstorms
+  if (surfData.weather.weather_code >= 95) {
+    timingAdvice = `⚠️ WAIT - Thunderstorms in area! Check back after storms pass`;
+  }
+  
+  // Night surfing safety
+  if (currentHour < 6 || currentHour > 19) {
+    timingAdvice += '. Recommend daylight hours (6 AM - 7 PM) for safety';
+  }
+  
+  return timingAdvice || 'Check conditions and tide timing for best session';
+}
+
+// Helper function to get contextual tide info for AI
+function getTideContext(surfData: any): string {
+  const now = new Date();
+  const currentTime = now.toLocaleTimeString('en-US', { 
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true 
+  });
+  
+  const nextHigh = surfData.tides.next_high;
+  const nextLow = surfData.tides.next_low;
+  const prevHigh = surfData.tides.previous_high;
+  const prevLow = surfData.tides.previous_low;
+  
+  let context = `CURRENT TIME: ${currentTime} ET\n`;
+  context += `CURRENT TIDE: ${surfData.details.tide_height_ft} ft (${surfData.details.tide_state})\n\n`;
+  
+  context += `TIDE TIMELINE:\n`;
+  if (prevLow) context += `✅ Previous Low: ${prevLow.time} (${prevLow.height} ft)\n`;
+  if (prevHigh) context += `✅ Previous High: ${prevHigh.time} (${prevHigh.height} ft)\n`;
+  context += `📍 NOW: ${currentTime} (${surfData.details.tide_height_ft} ft)\n`;
+  if (nextHigh) context += `🔮 Next High: ${nextHigh.time} (${nextHigh.height} ft)\n`;
+  if (nextLow) context += `🔮 Next Low: ${nextLow.time} (${nextLow.height} ft)\n`;
+  
+  return context;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,8 +112,16 @@ export async function GET(request: NextRequest) {
     if (!forceRefresh) {
       const cachedReport = await getCachedReport();
       if (cachedReport) {
-        console.log('📋 Returning cached report');
-        return NextResponse.json(cachedReport);
+        // Check if cached report is still relevant (less than 2 hours old)
+        const reportAge = Date.now() - new Date(cachedReport.timestamp).getTime();
+        const maxAge = 2 * 60 * 60 * 1000; // 2 hours
+        
+        if (reportAge < maxAge) {
+          console.log('📋 Returning cached report');
+          return NextResponse.json(cachedReport);
+        } else {
+          console.log('🕒 Cached report too old, generating fresh one');
+        }
       }
     }
 
@@ -59,26 +145,41 @@ export async function GET(request: NextRequest) {
     const surfData = await surfDataResponse.json();
     console.log('📊 Got surf data, generating AI report...');
     
-    // Generate AI report
+    // Get contextual timing advice
+    const optimalTiming = getOptimalSurfTiming(surfData);
+    const tideContext = getTideContext(surfData);
+    
+    // Generate AI report with improved context
     const { object: aiReport } = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: surfReportSchema,
-    prompt: `
-    Generate a conversational surf report for St. Augustine, Florida as a knowledgeable local surfer would write it:
+      prompt: `
+        You are a local St. Augustine surfer giving a real-time surf report. Be specific about CURRENT timing.
 
-    Current Conditions:
-    🌊 Waves: ${surfData.details.wave_height_ft} ft @ ${surfData.details.wave_period_sec}s
-    💨 Wind: ${surfData.details.wind_speed_kts} kts from ${surfData.details.wind_direction_deg}°
-    🌊 Tide: ${surfData.details.tide_state} (${surfData.details.tide_height_ft} ft)
-    ☀️ Weather: ${surfData.weather.weather_description}
-    🌡️ Air: ${surfData.weather.air_temperature_f}°F | Water: ${surfData.weather.water_temperature_f}°F
+        ${tideContext}
 
-    Tides Today:
-    🕐 High: ${surfData.tides.next_high?.time || 'N/A'}
-    🕐 Low: ${surfData.tides.next_low?.time || 'N/A'}
+        CURRENT CONDITIONS:
+        🌊 Wave Height: ${surfData.details.wave_height_ft} ft
+        ⏱️ Wave Period: ${surfData.details.wave_period_sec} seconds  
+        💨 Wind: ${surfData.details.wind_speed_kts} knots from ${surfData.details.wind_direction_deg}°
+        ☀️ Weather: ${surfData.weather.weather_description} ${surfData.weather.weather_code >= 95 ? '⚠️ THUNDERSTORMS' : ''}
+        🌡️ Air: ${surfData.weather.air_temperature_f}°F | Water: ${surfData.weather.water_temperature_f}°F
+        📊 Surfability Score: ${surfData.score}/100
 
-    Write this as a local who surfs daily would - honest about conditions, practical about timing, and conversational. Include board recommendation and best session timing. 150-200 words.
-    `,
+        OPTIMAL TIMING SUGGESTION: ${optimalTiming}
+
+        Instructions:
+        - Write a conversational 150-200 word report
+        - Give CURRENT, actionable timing advice (not past recommendations)
+        - If it's thunderstorms, prioritize safety warnings
+        - Only recommend surfing during daylight hours (6 AM - 7 PM ET)
+        - Be honest about conditions - don't oversell poor surf
+        - Include board and wetsuit recommendations
+        - Mention specific St. Augustine spots if relevant
+        - Use current tide state (Rising/Falling) for timing advice
+
+        CRITICAL: Base timing advice on the current time and tide state above, not generic suggestions.
+      `,
       temperature: 0.7,
     });
 
@@ -100,7 +201,7 @@ export async function GET(request: NextRequest) {
         surfability_score: surfData.score
       },
       recommendations: aiReport.recommendations,
-      cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString() // 4 hours
+      cached_until: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString() // 2 hours (shorter cache for better real-time updates)
     };
 
     // Save to database

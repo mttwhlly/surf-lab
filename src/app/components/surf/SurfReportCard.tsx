@@ -33,11 +33,17 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const reportTime = new Date(timestamp);
-    const diffHours = Math.floor((now.getTime() - reportTime.getTime()) / (1000 * 60 * 60));
+    // const diffHours = Math.floor((now.getTime() - reportTime.getTime()) / (1000 * 60 * 60));
     
-    if (diffHours < 1) return 'Just now';
-    if (diffHours === 1) return '1 hour ago';
-    return `${diffHours} hours ago`;
+    // if (diffHours < 1) return 'Just now';
+    // if (diffHours === 1) return '1 hour ago';
+    // return `${diffHours} hours ago`;
+    return reportTime.toLocaleDateString('en-US', {
+//   weekday: "short",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+}) + ' @ ' + reportTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ;
   };
 
   const getBoardEmoji = (boardType: string) => {
@@ -106,7 +112,7 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   return (
 
         <div className="prose prose-lg mb-6">
-            <pre className="text-center pt-4 pb-8 uppercase text-gray-500 tracking-wide">reported {formatTimeAgo(report?.timestamp || '')}</pre>
+            <pre className="text-center pt-4 pb-8 uppercase text-gray-500 tracking-wide">{formatTimeAgo(report?.timestamp || '')}</pre>
           <p className="text-gray-800 leading-relaxed text-2xl md:text-3xl whitespace-pre-wrap">
             {report?.report || 'Loading surf report...'}
           </p>
