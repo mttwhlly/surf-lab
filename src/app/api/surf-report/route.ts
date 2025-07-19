@@ -63,33 +63,22 @@ export async function GET(request: NextRequest) {
     const { object: aiReport } = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: surfReportSchema,
-      prompt: `
-        Generate a friendly, conversational surf report for St. Augustine, Florida based on these current conditions:
+    prompt: `
+    Generate a conversational surf report for St. Augustine, Florida as a knowledgeable local surfer would write it:
 
-        🌊 Wave Height: ${surfData.details.wave_height_ft} ft
-        ⏱️ Wave Period: ${surfData.details.wave_period_sec} seconds  
-        💨 Wind: ${surfData.details.wind_speed_kts} knots from ${surfData.details.wind_direction_deg}°
-        🌊 Tide: ${surfData.details.tide_state} (${surfData.details.tide_height_ft} ft)
-        ☀️ Weather: ${surfData.weather.weather_description}
-        🌡️ Air: ${surfData.weather.air_temperature_f}°F | Water: ${surfData.weather.water_temperature_f}°F
-        📊 Surfability Score: ${surfData.score}/100
+    Current Conditions:
+    🌊 Waves: ${surfData.details.wave_height_ft} ft @ ${surfData.details.wave_period_sec}s
+    💨 Wind: ${surfData.details.wind_speed_kts} kts from ${surfData.details.wind_direction_deg}°
+    🌊 Tide: ${surfData.details.tide_state} (${surfData.details.tide_height_ft} ft)
+    ☀️ Weather: ${surfData.weather.weather_description}
+    🌡️ Air: ${surfData.weather.air_temperature_f}°F | Water: ${surfData.weather.water_temperature_f}°F
 
-        🕐 Next High Tide: ${surfData.tides.next_high?.time || 'N/A'}
-        🕐 Next Low Tide: ${surfData.tides.next_low?.time || 'N/A'}
+    Tides Today:
+    🕐 High: ${surfData.tides.next_high?.time || 'N/A'}
+    🕐 Low: ${surfData.tides.next_low?.time || 'N/A'}
 
-        Write this in the voice of a friendly local surfer who knows St. Augustine well. Include:
-        - Honest assessment of conditions (don't oversell poor conditions)
-        - Practical advice about what to expect
-        - Board recommendations based on wave size and conditions
-        - Wetsuit advice based on water temperature
-        - Timing suggestions based on tide and wind (ONLY suggest surfing during daylight hours - dawn to dusk, roughly 6 AM to 7 PM)
-        - Specific spot recommendations if relevant (Vilano Beach, St. Augustine Beach, etc.)
-        - Any hazards or things to watch out for
-
-        IMPORTANT: Only recommend upcoming surf sessions during reasonable daylight hours (6 AM - 7 PM). If the best tide times are at night, mention waiting until tomorrow's better daytime tides.
-
-        Keep it conversational but informative, around 150-200 words.
-      `,
+    Write this as a local who surfs daily would - honest about conditions, practical about timing, and conversational. Include board recommendation and best session timing. 150-200 words.
+    `,
       temperature: 0.7,
     });
 
