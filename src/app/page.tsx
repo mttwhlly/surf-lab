@@ -45,7 +45,7 @@ export default function SurfApp() {
           <ErrorCard message={surfError || reportError || 'Unknown error'} />
         )}
       </div>
-      <pre className='mt-4 text-sm text-gray-400 max-w-2xl w-full mx-auto whitespace-pre-wrap pt-2 pb-4 px-4 border-gray-200 border-1 border-dashed rounded-xl'><span className='text-xl mr-2 font-bold'>⚠</span>This AI-powered surf report uses real ocean data but isn't perfect - always check conditions yourself before paddling out.</pre>
+      <pre className='mt-4 text-sm text-gray-400 max-w-2xl w-full mx-auto whitespace-pre-wrap pt-2 pb-4 px-4 border-gray-200 border-1 border-dashed rounded-xl'><span className='mr-2 font-bold'>Heads up!</span>This AI-powered surf report uses real ocean data but isn't perfect - always check conditions yourself before paddling out.</pre>
     </div>
   );
 }
