@@ -133,26 +133,24 @@ export async function GET(request: NextRequest) {
       console.log('⚡ Force refresh requested - skipping cache');
     }
 
-    // Check cache first (unless forcing refresh)  
-    if (!forceRefresh) {
-      const cachedReport = await getCachedReport();
-      if (cachedReport) {
-        // Check if cached report is still relevant (less than 15 minutes old)
-        const reportAge = Date.now() - new Date(cachedReport.timestamp).getTime();
-        const maxAge = 15 * 60 * 1000; // 15 minutes
-        
-        // ALSO check if cached report has outdated fallback data
-        const hasOldFallbackData = cachedReport.conditions.wave_height_ft === 1.5 && 
-                                   cachedReport.conditions.wave_period_sec === 6;
-        
-        if (reportAge < maxAge && !hasOldFallbackData) {
-          console.log('📋 Returning cached report');
-          return NextResponse.json(cachedReport);
-        } else if (hasOldFallbackData) {
-          console.log('🗑️ Cached report has fallback data (1.5ft/6s) - generating fresh report');
-        } else {
-          console.log('🕒 Cached report too old, generating fresh one');
-        }
+    // Check cache first - DATABASE IS AUTHORITATIVE FOR ALL USERS
+    const cachedReport = await getCachedReport();
+    if (cachedReport && !forceRefresh) {
+      // Check if cached report is still valid (less than 2 hours old)
+      const reportAge = Date.now() - new Date(cachedReport.timestamp).getTime();
+      const maxAge = 2 * 60 * 60 * 1000; // 2 hours
+      
+      // ALSO check if cached report has outdated fallback data
+      const hasOldFallbackData = cachedReport.conditions.wave_height_ft === 1.5 && 
+                                 cachedReport.conditions.wave_period_sec === 6;
+      
+      if (reportAge < maxAge && !hasOldFallbackData) {
+        console.log(`📋 Returning cached report (${Math.round(reportAge / 1000 / 60)} minutes old) - serving all users`);
+        return NextResponse.json(cachedReport);
+      } else if (hasOldFallbackData) {
+        console.log('🗑️ Cached report has fallback data (1.5ft/6s) - generating fresh report for all users');
+      } else {
+        console.log('🕒 Cached report expired (>2 hours) - generating fresh report for all users');
       }
     }
 
@@ -329,7 +327,7 @@ export async function GET(request: NextRequest) {
         surfability_score: surfData.score
       },
       recommendations: aiReport.recommendations,
-      cached_until: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 minutes for real-time updates
+      cached_until: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString() // 2 hours for database cache
     };
 
     // Save to database
