@@ -1,11 +1,10 @@
-// src/app/page.tsx
 'use client';
 
 import Image from 'next/image';
 import { useSurfReport } from './hooks/useSurfReport';
 import { SurfReportCard } from './components/surf/SurfReportCard';
 import { ErrorCard } from './components/ui/ErrorCard';
-import { DataFreshnessIndicator } from './components/ui/DataFreshnessIndicator';
+import { DataFlowDebug } from './components/debug/DataFlowDebug';
 
 export default function SurfApp() {
   const { 
@@ -13,9 +12,9 @@ export default function SurfApp() {
     loading: reportLoading, 
     error: reportError,
     dataFreshness,
-    nextUpdateTime,
     reportAge,
-    isRefetching
+    isRefetching,
+    nextUpdateTime
   } = useSurfReport();
 
   return (
@@ -33,16 +32,7 @@ export default function SurfApp() {
 
       {/* Main Container */}
       <div className="mt-8 px-4 max-w-3xl w-full">
-
-        {/* Data Freshness Indicator */}
-        {/* <DataFreshnessIndicator 
-          freshness={dataFreshness}
-          reportAge={reportAge}
-          nextUpdate={nextUpdateTime}
-          isRefetching={isRefetching}
-        /> */}
-
-        {/* AI Surf Report */}
+        {/* AI Surf Report - This uses cached DB data! */}
         <SurfReportCard report={surfReport} loading={reportLoading} />
 
         {/* Error Display */}
@@ -55,6 +45,20 @@ export default function SurfApp() {
         <span className='mr-2 font-bold'>Heads up!</span>
         This AI-powered surf report uses real ocean data and updates 4x daily (5 AM, 9 AM, 1 PM, 4 PM ET). Always check conditions yourself before paddling out.
       </pre>
+
+      {/* Debug Component - Shows data flow in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="max-w-2xl w-full">
+          <DataFlowDebug 
+            report={surfReport}
+            loading={reportLoading}
+            isRefetching={isRefetching}
+            dataFreshness={dataFreshness}
+            reportAge={reportAge}
+            nextUpdateTime={nextUpdateTime}
+          />
+        </div>
+      )}
     </div>
   );
 }

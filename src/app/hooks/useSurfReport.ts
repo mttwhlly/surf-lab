@@ -15,43 +15,51 @@ export function useSurfReport() {
   } = useQuery({
     queryKey: ['surfReport'],
     queryFn: async (): Promise<SurfReport> => {
+      console.log('🔄 Fetching AI surf report (should use DB cache)...');
+      
       const response = await fetch('/api/surf-report', {
         headers: {
           'Accept': 'application/json',
-          // Add cache control to prefer cached data
-          'Cache-Control': 'max-age=60', // Accept 1-minute old data
+          // Prefer cached responses
+          'Cache-Control': 'max-age=300', // Accept 5-minute old responses
         },
       });
 
       if (!response.ok) {
+        console.error(`❌ Surf report API failed: ${response.status} ${response.statusText}`);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log(`✅ Got surf report from DB cache: ${result.id} (${result.cached_until})`);
+      return result;
     },
     
-    // Optimized for pre-cached data approach
-    refetchInterval: 10 * 60 * 1000, // Check every 10 minutes (data is pre-generated)
+    // OPTIMIZED FOR PRE-CACHED DB DATA
+    // Since cron jobs run 4x daily, we can be more relaxed about fetching
     
-    // Data is considered fresh for 15 minutes (since cron runs 4x daily)
-    staleTime: 15 * 60 * 1000, // 15 minutes
+    // Check every 15 minutes (cron runs every ~4 hours)
+    refetchInterval: 15 * 60 * 1000,
     
-    // Keep in memory for longer since updates are less frequent
-    gcTime: 4 * 60 * 60 * 1000, // 4 hours (between cron runs)
+    // Data is fresh for 30 minutes (plenty of buffer between cron runs)
+    staleTime: 30 * 60 * 1000,
     
-    // Less aggressive refetching since data is pre-generated
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    // Keep in cache for full cycle between updates
+    gcTime: 6 * 60 * 60 * 1000, // 6 hours
     
-    // Don't poll in background to save battery
+    // Less aggressive refetching
+    refetchOnWindowFocus: false, // Don't refetch on every window focus
+    refetchOnReconnect: true,    // Only refetch on reconnect
+    
+    // No background polling to save battery
     refetchIntervalInBackground: false,
     
-    // Fewer retries since server should have cached data
-    retry: 1,
-    retryDelay: 5000, // 5 second delay before retry
+    // Minimal retries since data should be cached
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     
-    // Enable background updates for better UX
-    refetchOnMount: 'always', // Always check for fresh data on mount
+    // Only fetch fresh data on initial mount
+    refetchOnMount: 'always',
   });
 
   // Calculate data freshness for UI indicators
@@ -62,30 +70,39 @@ export function useSurfReport() {
     const now = new Date();
     const ageMinutes = Math.floor((now.getTime() - reportTime.getTime()) / (1000 * 60));
     
-    if (ageMinutes < 5) return 'fresh';
-    if (ageMinutes < 30) return 'recent';
-    if (ageMinutes < 120) return 'stale';
-    return 'old';
+    if (ageMinutes < 15) return 'fresh';      // < 15 min
+    if (ageMinutes < 60) return 'recent';     // < 1 hour  
+    if (ageMinutes < 240) return 'stale';     // < 4 hours
+    return 'old';                             // > 4 hours
   };
 
   const getNextUpdateTime = () => {
-    // Next cron run times: 5:00, 9:00, 13:00, 16:00 ET
+    // Cron runs at: 5:00, 9:00, 13:00, 16:00 ET (9, 13, 17, 20 UTC)
     const now = new Date();
-    const et = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    const currentHour = et.getHours();
     
-    const nextHours = [5, 9, 13, 16];
-    let nextHour = nextHours.find(hour => hour > currentHour);
+    // Convert to Eastern Time
+    const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const currentHour = etNow.getHours();
     
-    if (!nextHour) {
-      // Next update is tomorrow at 5 AM
-      nextHour = 5;
-      et.setDate(et.getDate() + 1);
+    const cronHours = [5, 9, 13, 16]; // Eastern Time
+    let nextHour = cronHours.find(hour => hour > currentHour);
+    
+    const nextUpdate = new Date(etNow);
+    
+    if (nextHour) {
+      // Today
+      nextUpdate.setHours(nextHour, 0, 0, 0);
+    } else {
+      // Tomorrow at 5 AM
+      nextUpdate.setDate(nextUpdate.getDate() + 1);
+      nextUpdate.setHours(5, 0, 0, 0);
     }
     
-    et.setHours(nextHour, 0, 0, 0);
-    return et;
+    return nextUpdate;
   };
+
+  // Calculate if we should show "loading from cache" vs "generating fresh"
+  const isUsingCache = report && !isLoading;
 
   return {
     report: report || null,
@@ -95,10 +112,21 @@ export function useSurfReport() {
     isRefetching,
     lastUpdated: dataUpdatedAt,
     isStale,
-    // New helpers for UI
+    isUsingCache,
+    
+    // UI helper data
     dataFreshness: getDataFreshness(),
     nextUpdateTime: getNextUpdateTime(),
     reportAge: report?.timestamp ? 
-      Math.floor((Date.now() - new Date(report.timestamp).getTime()) / (1000 * 60)) : null
+      Math.floor((Date.now() - new Date(report.timestamp).getTime()) / (1000 * 60)) : null,
+      
+    // Debug info
+    debugInfo: {
+      queryKey: ['surfReport'],
+      reportId: report?.id,
+      cachedUntil: report?.cached_until,
+      isStale,
+      isRefetching,
+    }
   };
 }

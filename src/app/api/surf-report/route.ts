@@ -133,28 +133,45 @@ export async function GET(request: NextRequest) {
       console.log('⚡ Force refresh requested - skipping cache');
     }
 
-    // Check cache first - DATABASE IS AUTHORITATIVE FOR ALL USERS
+    // Check cache first - THIS IS THE MAIN PATH FOR USERS
+    console.log('🔍 Checking database cache for existing report...');
     const cachedReport = await getCachedReport();
+    
     if (cachedReport && !forceRefresh) {
-      // Check if cached report is still valid (less than 2 hours old)
+      // Check if cached report is still valid
       const reportAge = Date.now() - new Date(cachedReport.timestamp).getTime();
       const maxAge = 2 * 60 * 60 * 1000; // 2 hours
+      const ageMinutes = Math.floor(reportAge / (1000 * 60));
       
-      // ALSO check if cached report has outdated fallback data
+      // Check for outdated fallback data
       const hasOldFallbackData = cachedReport.conditions.wave_height_ft === 1.5 && 
                                  cachedReport.conditions.wave_period_sec === 6;
       
       if (reportAge < maxAge && !hasOldFallbackData) {
-        console.log(`📋 Returning cached report (${Math.round(reportAge / 1000 / 60)} minutes old) - serving all users`);
-        return NextResponse.json(cachedReport);
+        console.log(`✅ RETURNING CACHED REPORT - Age: ${ageMinutes} minutes`);
+        console.log(`📊 Cached data: ${cachedReport.conditions.wave_height_ft}ft waves, ${cachedReport.conditions.surfability_score}/100 score`);
+        console.log(`🎯 Report ID: ${cachedReport.id}`);
+        console.log(`⏰ Valid until: ${new Date(cachedReport.cached_until).toLocaleString()}`);
+        
+        // Add a response header to indicate cache usage
+        return NextResponse.json(cachedReport, {
+          headers: {
+            'X-Data-Source': 'database-cache',
+            'X-Report-Age-Minutes': ageMinutes.toString(),
+            'X-Cache-Valid-Until': cachedReport.cached_until
+          }
+        });
       } else if (hasOldFallbackData) {
-        console.log('🗑️ Cached report has fallback data (1.5ft/6s) - generating fresh report for all users');
+        console.log('🗑️ Cached report has fallback data (1.5ft/6s) - generating fresh report');
       } else {
-        console.log('🕒 Cached report expired (>2 hours) - generating fresh report for all users');
+        console.log(`🕒 Cached report expired (${ageMinutes} minutes > 120) - generating fresh report`);
       }
+    } else {
+      console.log('❌ No cached report found - generating fresh report');
     }
 
-    console.log('🌊 Generating new AI report...');
+    // Only generate fresh reports when cache is empty/expired/invalid
+    console.log('🔄 GENERATING NEW AI REPORT...');
     
     // OPTION 1: Try to get fresh surfability data
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
@@ -333,13 +350,42 @@ export async function GET(request: NextRequest) {
     // Save to database
     await saveReport(report);
     
-    console.log('✅ New report generated and saved:', report.id);
-    return NextResponse.json(report);
+    console.log('✅ NEW REPORT GENERATED AND CACHED');
+    console.log(`🆔 New Report ID: ${report.id}`);
+    console.log(`📊 Wave Data: ${report.conditions.wave_height_ft}ft, ${report.conditions.wave_period_sec}s, Score: ${report.conditions.surfability_score}`);
+    console.log(`💾 Cached until: ${new Date(report.cached_until).toLocaleString()}`);
+    
+    return NextResponse.json(report, {
+      headers: {
+        'X-Data-Source': 'fresh-generation',
+        'X-Report-Age-Minutes': '0',
+        'X-Cache-Valid-Until': report.cached_until
+      }
+    });
 
   } catch (error) {
-    console.error('❌ Error generating surf report:', error);
+    console.error('❌ Error in surf report API:', error);
     
-    // Return a more detailed error response
+    // Try to return stale cache as fallback
+    try {
+      const staleCache = await getCachedReport();
+      if (staleCache) {
+        console.log('🆘 Returning stale cached report as fallback');
+        return NextResponse.json({
+          ...staleCache,
+          _fallback: true,
+          _error: 'Fresh generation failed, using stale cache'
+        }, {
+          headers: {
+            'X-Data-Source': 'stale-cache-fallback',
+            'X-Fallback-Reason': error instanceof Error ? error.message : 'Unknown error'
+          }
+        });
+      }
+    } catch (cacheError) {
+      console.error('❌ Even cache fallback failed:', cacheError);
+    }
+    
     return NextResponse.json(
       { 
         error: 'Failed to generate surf report',
