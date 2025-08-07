@@ -40,15 +40,16 @@ export default function SurfApp() {
           <ErrorCard message={reportError} />
         )}
       </div>
-   
-      <pre className='mt-4 text-sm text-gray-400 max-w-2xl w-full mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl'>
-        <span className='mr-2 font-bold'>Heads up!</span>
-        This AI-powered surf report uses real ocean data and updates 4x daily (5 AM, 9 AM, 1 PM, 4 PM ET). Always check conditions yourself before paddling out.
-      </pre>
+      <div className="mx-auto max-w-2xl w-full px-4 mt-6">
+        <pre className='text-sm text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl'>
+          <span className='mr-2 font-bold'>Heads up!</span>
+          This AI-powered surf report uses real ocean data and updates 4x daily (5 AM, 9 AM, 1 PM, 4 PM ET). Always check conditions yourself before paddling out.
+        </pre>
+      </div>
 
       {/* Debug Component - Shows data flow in development */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="max-w-2xl w-full">
+        <div className="max-w-2xl w-full px-4">
           <DataFlowDebug 
             report={surfReport}
             loading={reportLoading}
