@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
           healthCheckOk: testResponse.ok
         },
         
-        recommendations: []
+        recommendations: [] as string[]
       };
       
       // Add recommendations based on status
