@@ -82,7 +82,7 @@ export default function SSETestComponent() {
         addMessage(`Cron job failed: ${response.status}`, 'error');
       }
     } catch (error) {
-      addMessage(`Cron job error: ${error.message}`, 'error');
+      addMessage(`Cron job error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
   
