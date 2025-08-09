@@ -3,6 +3,39 @@ import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || '');
 
+// Simple in-memory store for SSE connections (in production, use Redis)
+const sseConnections = new Set<WritableStreamDefaultWriter>();
+
+// Function to broadcast to all SSE connections
+async function broadcastToSSE(data: any) {
+  const message = `data: ${JSON.stringify({
+    type: 'surf-report',
+    data,
+    timestamp: new Date().toISOString(),
+    source: 'cron-update'
+  })}\n\n`;
+
+  const messageBuffer = new TextEncoder().encode(message);
+  
+  // Send to all connected clients
+  const disconnectedClients: WritableStreamDefaultWriter[] = [];
+  
+  for (const writer of sseConnections) {
+    try {
+      await writer.write(messageBuffer);
+      console.log('📡 Broadcasted update to SSE client');
+    } catch (error) {
+      console.log('🔌 SSE client disconnected, removing from pool');
+      disconnectedClients.push(writer);
+    }
+  }
+  
+  // Clean up disconnected clients
+  disconnectedClients.forEach(writer => sseConnections.delete(writer));
+  
+  console.log(`📊 SSE broadcast sent to ${sseConnections.size} connected clients`);
+}
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🕐 Cron job triggered at:', new Date().toISOString());
@@ -20,11 +53,6 @@ export async function GET(request: NextRequest) {
     
     if (!isVercelCron && !isAuthorized) {
       console.log('❌ Unauthorized cron request');
-      console.log('Headers:', {
-        userAgent: request.headers.get('user-agent'),
-        vercelCron: request.headers.get('x-vercel-cron'),
-        hasAuth: !!authHeader
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -79,7 +107,16 @@ export async function GET(request: NextRequest) {
     const aiReport = await aiReportResponse.json();
     console.log('✅ Fresh AI report generated:', aiReport.id);
 
-    // Step 5: Return success response
+    // Step 5: Broadcast to all SSE connections
+    console.log('📡 Broadcasting update to SSE clients...');
+    try {
+      await broadcastToSSE(aiReport);
+    } catch (sseError) {
+      console.error('❌ Error broadcasting to SSE clients:', sseError);
+      // Don't fail the whole cron job if SSE broadcast fails
+    }
+
+    // Step 6: Return success response
     const response = {
       success: true,
       timestamp: new Date().toISOString(),
@@ -87,7 +124,9 @@ export async function GET(request: NextRequest) {
         cleared_reports: clearedReports.length,
         surf_data_updated: true,
         ai_report_generated: true,
-        new_report_id: aiReport.id
+        new_report_id: aiReport.id,
+        sse_broadcast_sent: true,
+        sse_clients_notified: sseConnections.size
       },
       next_scheduled_runs: [
         '5:00 AM Eastern',
@@ -119,3 +158,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return GET(request);
 }
+
+// Export the SSE connections for use in the stream endpoint
+export { sseConnections, broadcastToSSE };

@@ -10,6 +10,9 @@ interface DebugProps {
   dataFreshness: string | null;
   reportAge: number | null;
   nextUpdateTime: Date | null;
+  method?: 'sse' | 'react-query';
+  connectionState?: string;
+  debugInfo?: any;
 }
 
 export function DataFlowDebug({ 
@@ -18,7 +21,10 @@ export function DataFlowDebug({
   isRefetching, 
   dataFreshness, 
   reportAge, 
-  nextUpdateTime 
+  nextUpdateTime,
+  method = 'react-query',
+  connectionState = 'unknown',
+  debugInfo = null
 }: DebugProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCacheTest, setShowCacheTest] = useState(false);
@@ -137,10 +143,32 @@ export function DataFlowDebug({
         <div className="px-3 pb-3 border-t border-current/20">
           <div className="mt-3 space-y-2 text-sm">
             
+            {/* Connection Method */}
+            <div className="flex justify-between">
+              <span className="font-medium">Method:</span>
+              <span className={method === 'sse' ? 'text-green-600' : 'text-blue-600'}>
+                {method === 'sse' ? 'Server-Sent Events' : 'React Query'}
+              </span>
+            </div>
+
+            {/* Connection State (for SSE) */}
+            {method === 'sse' && (
+              <div className="flex justify-between">
+                <span className="font-medium">Connection:</span>
+                <span className={
+                  connectionState === 'connected' ? 'text-green-600' :
+                  connectionState === 'connecting' ? 'text-blue-600' :
+                  'text-red-600'
+                }>
+                  {connectionState}
+                </span>
+              </div>
+            )}
+            
             {/* Data Source */}
             <div className="flex justify-between">
               <span className="font-medium">Data Source:</span>
-              <span>{loading ? 'Fetching...' : 'Database Cache'}</span>
+              <span>{loading ? 'Fetching...' : method === 'sse' ? 'Live Stream' : 'Database Cache'}</span>
             </div>
 
             {/* Report Info */}
@@ -256,11 +284,32 @@ export function DataFlowDebug({
               </div>
             )}
 
+            {/* Debug Info Section */}
+            {debugInfo && (
+              <div className="mt-3 pt-3 border-t border-current/20">
+                <div className="text-xs opacity-75">
+                  <div><strong>Method:</strong> {debugInfo.method}</div>
+                  {debugInfo.connected !== undefined && (
+                    <div><strong>Connected:</strong> {debugInfo.connected ? 'Yes' : 'No'}</div>
+                  )}
+                  {debugInfo.reconnectAttempts !== undefined && (
+                    <div><strong>Reconnect Attempts:</strong> {debugInfo.reconnectAttempts}</div>
+                  )}
+                  {debugInfo.sseError && (
+                    <div><strong>SSE Error:</strong> {debugInfo.sseError}</div>
+                  )}
+                  {debugInfo.sseSupported !== undefined && (
+                    <div><strong>SSE Supported:</strong> {debugInfo.sseSupported ? 'Yes' : 'No'}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* API Endpoint */}
             <div className="mt-3 pt-3 border-t border-current/20">
               <div className="text-xs opacity-75">
-                <div><strong>Endpoint:</strong> /api/surf-report</div>
-                <div><strong>Method:</strong> GET (cached)</div>
+                <div><strong>Endpoint:</strong> {method === 'sse' ? '/api/surf-stream' : '/api/surf-report'}</div>
+                <div><strong>Protocol:</strong> {method === 'sse' ? 'Server-Sent Events' : 'HTTP GET (cached)'}</div>
                 <div><strong>Cron:</strong> 4x daily (5,9,13,16 ET)</div>
               </div>
             </div>
