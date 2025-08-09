@@ -7,28 +7,21 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🕐 Cron job triggered at:', new Date().toISOString());
     
-    // Verify this is a Vercel cron request
+    // Verify authentication
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
     
-    // Vercel cron jobs include a special header
-    const isVercelCron = request.headers.get('user-agent')?.includes('vercel-cron') ||
-                        request.headers.get('x-vercel-cron') === '1';
+    if (!cronSecret) {
+      console.log('❌ CRON_SECRET not configured');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     
-    // Allow Vercel cron requests or manual requests with correct auth
-    const isAuthorized = authHeader === `Bearer ${cronSecret}`;
-    
-    if (!isVercelCron && !isAuthorized) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
       console.log('❌ Unauthorized cron request');
-      console.log('Headers:', {
-        userAgent: request.headers.get('user-agent'),
-        vercelCron: request.headers.get('x-vercel-cron'),
-        hasAuth: !!authHeader
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('✅ Authorized cron request - clearing cache and refreshing forecast');
+    console.log('✅ Authorized cron request');
 
     // Step 1: Clear cached surf reports
     const clearedReports = await sql`
@@ -39,84 +32,110 @@ export async function GET(request: NextRequest) {
 
     console.log(`🗑️ Cleared ${clearedReports.length} cached surf reports`);
 
-    // Step 2: Get the base URL for internal API calls  
-    const baseUrl = process.env.VERCEL_URL ? 
-                   `https://${process.env.VERCEL_URL}` : 
-                   (process.env.NEXT_PUBLIC_API_URL || 
-                    `https://${request.headers.get('host')}`);
+    // Step 2: Instead of internal API calls, just force cache refresh
+    // The next request to /api/surf-report will generate fresh data automatically
+    
+    console.log('✅ Cache cleared - next request will generate fresh data');
 
-    console.log('🔗 Using base URL:', baseUrl);
+    // Step 3: Optionally, make a single external request to warm the cache
+    try {
+      console.log('🔥 Warming cache with fresh surf report...');
+      
+      // Make external request to our own API (this works reliably)
+      const protocol = request.headers.get('x-forwarded-proto') || 'https';
+      const host = request.headers.get('host');
+      const externalUrl = `${protocol}://${host}`;
+      
+      const warmupResponse = await fetch(`${externalUrl}/api/surf-report`, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'SurfLab-Cron-Warmup/1.0',
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        signal: AbortSignal.timeout(45000) // 45 second timeout
+      });
 
-    // Step 3: Trigger fresh surf data fetch
-    console.log('🌊 Fetching fresh surf conditions...');
-    const surfDataResponse = await fetch(`${baseUrl}/api/surfability`, {
-      cache: 'no-store',
-      headers: {
-        'User-Agent': 'SurfLab-Cron/1.0'
+      if (warmupResponse.ok) {
+        const warmupData = await warmupResponse.json();
+        console.log('✅ Cache warmed with fresh report:', warmupData.id);
+        
+        const response = {
+          success: true,
+          timestamp: new Date().toISOString(),
+          source: 'external-cron-coolify',
+          userAgent: request.headers.get('user-agent'),
+          method: 'cache-clear-and-warmup',
+          actions: {
+            cleared_reports: clearedReports.length,
+            cache_warmed: true,
+            new_report_id: warmupData.id,
+            warmup_status: warmupResponse.status
+          },
+          note: 'Cache cleared and warmed with fresh surf report'
+        };
+
+        console.log('🎯 Cron job completed successfully:', response);
+        return NextResponse.json(response);
+        
+      } else {
+        // If warmup fails, that's OK - cache is still cleared
+        console.log(`⚠️ Cache warmup failed: ${warmupResponse.status}, but cache cleared successfully`);
+        
+        const response = {
+          success: true,
+          timestamp: new Date().toISOString(),
+          source: 'external-cron-coolify',
+          userAgent: request.headers.get('user-agent'),
+          method: 'cache-clear-only',
+          actions: {
+            cleared_reports: clearedReports.length,
+            cache_warmed: false,
+            warmup_error: warmupResponse.status
+          },
+          note: 'Cache cleared - next user request will generate fresh data'
+        };
+
+        console.log('🎯 Cron job completed with partial success:', response);
+        return NextResponse.json(response);
       }
-    });
+      
+    } catch (warmupError) {
+      // If warmup fails completely, that's still OK
+      console.log('⚠️ Cache warmup error:', warmupError);
+      
+      const response = {
+        success: true,
+        timestamp: new Date().toISOString(),
+        source: 'external-cron-coolify',
+        userAgent: request.headers.get('user-agent'),
+        method: 'cache-clear-only',
+        actions: {
+          cleared_reports: clearedReports.length,
+          cache_warmed: false,
+          warmup_error: warmupError instanceof Error ? warmupError.message : String(warmupError)
+        },
+        note: 'Cache cleared - next user request will generate fresh data'
+      };
 
-    if (!surfDataResponse.ok) {
-      throw new Error(`Surf data fetch failed: ${surfDataResponse.status}`);
+      console.log('🎯 Cron job completed (cache cleared):', response);
+      return NextResponse.json(response);
     }
-
-    const surfData = await surfDataResponse.json();
-    console.log('✅ Fresh surf data fetched');
-
-    // Step 4: Trigger fresh AI report generation
-    console.log('🤖 Generating fresh AI surf report...');
-    const aiReportResponse = await fetch(`${baseUrl}/api/surf-report`, {
-      cache: 'no-store',
-      headers: {
-        'User-Agent': 'SurfLab-Cron/1.0'
-      }
-    });
-
-    if (!aiReportResponse.ok) {
-      throw new Error(`AI report generation failed: ${aiReportResponse.status}`);
-    }
-
-    const aiReport = await aiReportResponse.json();
-    console.log('✅ Fresh AI report generated:', aiReport.id);
-
-    // Step 5: Return success response
-    const response = {
-      success: true,
-      timestamp: new Date().toISOString(),
-      actions: {
-        cleared_reports: clearedReports.length,
-        surf_data_updated: true,
-        ai_report_generated: true,
-        new_report_id: aiReport.id,
-        note: 'SSE clients will detect new report via polling'
-      },
-      next_scheduled_runs: [
-        '5:00 AM Eastern',
-        '9:00 AM Eastern', 
-        '1:00 PM Eastern',
-        '4:00 PM Eastern'
-      ]
-    };
-
-    console.log('🎯 Cron job completed successfully:', response);
-    return NextResponse.json(response);
 
   } catch (error) {
     console.error('❌ Cron job failed:', error);
     
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Cron job failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    );
+    const errorResponse = {
+      success: false,
+      error: 'Cron job failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    };
+    
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
-// Handle POST requests too (some cron services prefer POST)
 export async function POST(request: NextRequest) {
   return GET(request);
 }
