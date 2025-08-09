@@ -1,13 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Wifi, WifiOff, Zap, Play, Square, RefreshCw } from 'lucide-react';
+
+interface Message {
+  id: number;
+  text: string;
+  type: string;
+  time: string;
+}
 
 export default function SSETestComponent() {
   const [isConnected, setIsConnected] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [connectionState, setConnectionState] = useState('disconnected');
-  const [eventSource, setEventSource] = useState(null);
+  const [eventSource, setEventSource] = useState<EventSource | null>(null);
 
   const connect = () => {
     console.log('🔌 Connecting to SSE...');
@@ -33,7 +40,7 @@ export default function SSETestComponent() {
         } else if (data.type === 'heartbeat') {
           addMessage('Heartbeat received', 'heartbeat');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error parsing SSE message:', error);
         addMessage('Error parsing message', 'error');
       }
@@ -57,7 +64,7 @@ export default function SSETestComponent() {
     addMessage('Disconnected from surf stream', 'info');
   };
   
-  const addMessage = (text, type = 'info') => {
+  const addMessage = (text: string, type = 'info') => {
     setMessages(prev => [...prev.slice(-9), {
       id: Date.now(),
       text,
@@ -81,8 +88,8 @@ export default function SSETestComponent() {
       } else {
         addMessage(`Cron job failed: ${response.status}`, 'error');
       }
-    } catch (error) {
-      addMessage(`Cron job error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } catch (error: unknown) {
+      addMessage(`Cron job error: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
   
