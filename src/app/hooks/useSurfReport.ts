@@ -15,13 +15,12 @@ export function useSurfReport() {
   } = useQuery({
     queryKey: ['surfReport'],
     queryFn: async (): Promise<SurfReport> => {
-      console.log('🔄 Fetching AI surf report (should use DB cache)...');
+      console.log('🔄 Fetching AI surf report...');
       
       const response = await fetch('/api/surf-report', {
         headers: {
           'Accept': 'application/json',
-          // Prefer cached responses
-          'Cache-Control': 'max-age=300', // Accept 5-minute old responses
+          'X-Debug': process.env.NODE_ENV === 'development' ? 'true' : 'false',
         },
       });
 
@@ -30,36 +29,48 @@ export function useSurfReport() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
+      // Log response headers for debugging (dev only)
+      if (process.env.NODE_ENV === 'development') {
+        const dataSource = response.headers.get('X-Data-Source');
+        const cacheStatus = response.headers.get('X-Cache-Status');
+        const responseTime = response.headers.get('X-Response-Time');
+        console.log(`📊 Data source: ${dataSource}, Cache: ${cacheStatus}, Time: ${responseTime}`);
+      }
+
       const result = await response.json();
-      console.log(`✅ Got surf report from DB cache: ${result.id} (${result.cached_until})`);
+      console.log(`✅ Got surf report: ${result.id}`);
       return result;
     },
     
-    // OPTIMIZED FOR PRE-CACHED DB DATA
-    // Since cron jobs run 4x daily, we can be more relaxed about fetching
+    // ENVIRONMENT-SPECIFIC SETTINGS
     
-    // Check every 15 minutes (cron runs every ~4 hours)
-    refetchInterval: 15 * 60 * 1000,
+    // Longer intervals in production
+    refetchInterval: process.env.NODE_ENV === 'production' 
+      ? false  // No automatic refetching in production
+      : 30 * 60 * 1000, // 30 minutes in development
     
-    // Data is fresh for 30 minutes (plenty of buffer between cron runs)
-    staleTime: 30 * 60 * 1000,
+    // Data stays fresh longer in production  
+    staleTime: process.env.NODE_ENV === 'production'
+      ? 4 * 60 * 60 * 1000  // 4 hours in production
+      : 2 * 60 * 60 * 1000, // 2 hours in development
     
-    // Keep in cache for full cycle between updates
-    gcTime: 6 * 60 * 60 * 1000, // 6 hours
+    // Keep in cache longer
+    gcTime: 8 * 60 * 60 * 1000, // 8 hours
     
-    // Less aggressive refetching
-    refetchOnWindowFocus: false, // Don't refetch on every window focus
-    refetchOnReconnect: true,    // Only refetch on reconnect
-    
-    // No background polling to save battery
+    // Production settings to prevent unnecessary requests
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: process.env.NODE_ENV === 'production' ? false : true,
     refetchIntervalInBackground: false,
     
-    // Minimal retries since data should be cached
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    // Minimal retries in production
+    retry: process.env.NODE_ENV === 'production' ? 1 : 2,
+    retryDelay: 5000,
     
-    // Only fetch fresh data on initial mount
+    // Control initial fetching
     refetchOnMount: 'always',
+    
+    // Enable/disable based on environment
+    enabled: true,
   });
 
   // Calculate data freshness for UI indicators
@@ -101,9 +112,6 @@ export function useSurfReport() {
     return nextUpdate;
   };
 
-  // Calculate if we should show "loading from cache" vs "generating fresh"
-  const isUsingCache = report && !isLoading;
-
   return {
     report: report || null,
     loading: isLoading,
@@ -112,7 +120,6 @@ export function useSurfReport() {
     isRefetching,
     lastUpdated: dataUpdatedAt,
     isStale,
-    isUsingCache,
     
     // UI helper data
     dataFreshness: getDataFreshness(),
@@ -120,13 +127,14 @@ export function useSurfReport() {
     reportAge: report?.timestamp ? 
       Math.floor((Date.now() - new Date(report.timestamp).getTime()) / (1000 * 60)) : null,
       
-    // Debug info
-    debugInfo: {
+    // Debug info (dev only)
+    debugInfo: process.env.NODE_ENV === 'development' ? {
       queryKey: ['surfReport'],
       reportId: report?.id,
       cachedUntil: report?.cached_until,
       isStale,
       isRefetching,
-    }
+      environment: process.env.NODE_ENV
+    } : null
   };
 }
