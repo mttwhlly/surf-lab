@@ -20,11 +20,11 @@ export function useSurfReportHybrid() {
       refetch: sse.refresh,
       isRefetching: false,
       lastUpdated: sse.lastUpdate,
-      dataFreshness: 'fresh', // SSE data is always fresh
+      dataFreshness: 'fresh' as const, // SSE data is always fresh
       reportAge: sse.report?.timestamp ? 
         Math.floor((Date.now() - new Date(sse.report.timestamp).getTime()) / (1000 * 60)) : null,
       nextUpdateTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
-      method: 'sse',
+      method: 'sse' as const,
       connectionState: sse.connectionState,
       debugInfo: {
         method: 'Server-Sent Events',
@@ -43,7 +43,7 @@ export function useSurfReportHybrid() {
       dataFreshness: reactQuery.dataFreshness,
       reportAge: reactQuery.reportAge,
       nextUpdateTime: reactQuery.nextUpdateTime,
-      method: 'react-query',
+      method: 'react-query' as const,
       connectionState: sse.connectionState,
       debugInfo: {
         method: 'React Query (fallback)',
