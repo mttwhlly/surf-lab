@@ -15,6 +15,14 @@ interface DebugProps {
   debugInfo?: any;
 }
 
+interface TestResult {
+  test: string;
+  duration: number;
+  dataSource: string;
+  status: string;
+  error?: string;
+}
+
 export function DataFlowDebug({ 
   report, 
   loading, 
@@ -28,7 +36,7 @@ export function DataFlowDebug({
 }: DebugProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCacheTest, setShowCacheTest] = useState(false);
-  const [testResults, setTestResults] = useState([]);
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isRunningTest, setIsRunningTest] = useState(false);
 
   if (process.env.NODE_ENV !== 'development') return null;
@@ -37,7 +45,7 @@ export function DataFlowDebug({
     setIsRunningTest(true);
     setTestResults([]);
     
-    const results = [];
+    const results: TestResult[] = [];
     
     // Test 1: First request
     console.log('🧪 Test 1: First request');
@@ -52,16 +60,16 @@ export function DataFlowDebug({
       results.push({
         test: 'First Request',
         duration: duration1,
-        dataSource: dataSource1,
+        dataSource: dataSource1 || 'unknown',
         status: response1.ok ? 'success' : 'error'
       });
-    } catch (error) {
+    } catch (error: unknown) {
       results.push({
         test: 'First Request',
         duration: 0,
         dataSource: 'error',
         status: 'error',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
     
@@ -80,16 +88,16 @@ export function DataFlowDebug({
       results.push({
         test: 'Second Request',
         duration: duration2,
-        dataSource: dataSource2,
+        dataSource: dataSource2 || 'unknown',
         status: response2.ok ? 'success' : 'error'
       });
-    } catch (error) {
+    } catch (error: unknown) {
       results.push({
         test: 'Second Request',
         duration: 0,
         dataSource: 'error',
         status: 'error',
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
     
