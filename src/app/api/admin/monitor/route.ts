@@ -1,4 +1,3 @@
-// src/app/api/admin/monitor/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getCachedReport } from '@/lib/db';
 
@@ -78,7 +77,7 @@ export async function GET(request: NextRequest) {
         cron: {
           nextRun: nextCron.toISOString(),
           nextRunLocal: nextCron.toLocaleString(),
-          hoursUntil: Math.round(hoursUntil * 10) / 10,
+          hoursUntil: Math.round(hoursToNextCron * 10) / 10,
           expectedRuns: cronHours.map(h => `${h}:00 ET`)
         },
         
