@@ -36,7 +36,7 @@ export default function SurfApp() {
 
       {/* SSE Status Indicator (only show if using SSE) */}
       {/* {method === 'sse' && (
-        <div className="mt-8 mb-0">
+        <div className="mt-4">
           <SSEStatusIndicator 
             connectionState={connectionState}
             method={method}
@@ -54,7 +54,6 @@ export default function SurfApp() {
           <ErrorCard message={reportError} />
         )}
       </div>
-
 
       <div className="mx-auto max-w-2xl w-full px-4 mt-6">
         <pre className='text-sm text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl'>

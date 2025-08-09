@@ -1,6 +1,6 @@
 'use client';
 
-import { Wifi, WifiOff, Zap, Clock, CheckCircle2 } from 'lucide-react';
+import { Wifi, WifiOff, Zap, CheckCircle2 } from 'lucide-react';
 
 interface SSEStatusIndicatorProps {
   connectionState: 'connecting' | 'connected' | 'disconnected' | 'error';
