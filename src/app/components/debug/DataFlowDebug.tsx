@@ -10,7 +10,7 @@ interface DebugProps {
   dataFreshness: string | null;
   reportAge: number | null;
   nextUpdateTime: Date | null;
-  method?: 'sse' | 'react-query';
+  method?: 'sse' | 'react-query' | 'optimized-polling';
   connectionState?: string;
   debugInfo?: any;
 }
@@ -30,7 +30,7 @@ export function DataFlowDebug({
   dataFreshness, 
   reportAge, 
   nextUpdateTime,
-  method = 'react-query',
+  method = 'optimized-polling',
   connectionState = 'unknown',
   debugInfo = null
 }: DebugProps) {
@@ -154,17 +154,25 @@ export function DataFlowDebug({
             {/* Connection Method */}
             <div className="flex justify-between">
               <span className="font-medium">Method:</span>
-              <span className={method === 'sse' ? 'text-green-600' : 'text-blue-600'}>
-                {method === 'sse' ? 'Server-Sent Events' : 'React Query'}
+              <span className={
+                method === 'sse' ? 'text-green-600' : 
+                method === 'optimized-polling' ? 'text-blue-600' :
+                'text-purple-600'
+              }>
+                {method === 'sse' ? 'Server-Sent Events' : 
+                 method === 'optimized-polling' ? 'Smart Polling' :
+                 'React Query'}
               </span>
             </div>
 
-            {/* Connection State (for SSE) */}
-            {method === 'sse' && (
+            {/* Connection State (for SSE and Polling) */}
+            {(method === 'sse' || method === 'optimized-polling') && (
               <div className="flex justify-between">
-                <span className="font-medium">Connection:</span>
+                <span className="font-medium">
+                  {method === 'sse' ? 'Connection:' : 'Polling Status:'}
+                </span>
                 <span className={
-                  connectionState === 'connected' ? 'text-green-600' :
+                  connectionState === 'connected' || connectionState === 'polling' ? 'text-green-600' :
                   connectionState === 'connecting' ? 'text-blue-600' :
                   'text-red-600'
                 }>
@@ -176,7 +184,10 @@ export function DataFlowDebug({
             {/* Data Source */}
             <div className="flex justify-between">
               <span className="font-medium">Data Source:</span>
-              <span>{loading ? 'Fetching...' : method === 'sse' ? 'Live Stream' : 'Database Cache'}</span>
+              <span>{loading ? 'Fetching...' : 
+                     method === 'sse' ? 'Live Stream' : 
+                     method === 'optimized-polling' ? 'Smart Polling' :
+                     'Database Cache'}</span>
             </div>
 
             {/* Report Info */}
@@ -316,8 +327,16 @@ export function DataFlowDebug({
             {/* API Endpoint */}
             <div className="mt-3 pt-3 border-t border-current/20">
               <div className="text-xs opacity-75">
-                <div><strong>Endpoint:</strong> {method === 'sse' ? '/api/surf-stream' : '/api/surf-report'}</div>
-                <div><strong>Protocol:</strong> {method === 'sse' ? 'Server-Sent Events' : 'HTTP GET (cached)'}</div>
+                <div><strong>Endpoint:</strong> {
+                  method === 'sse' ? '/api/surf-stream' : 
+                  method === 'optimized-polling' ? '/api/surf-report (smart polling)' :
+                  '/api/surf-report'
+                }</div>
+                <div><strong>Protocol:</strong> {
+                  method === 'sse' ? 'Server-Sent Events' :
+                  method === 'optimized-polling' ? 'Smart HTTP Polling' :
+                  'HTTP GET (cached)'
+                }</div>
                 <div><strong>Cron:</strong> 4x daily (5,9,13,16 ET)</div>
               </div>
             </div>
