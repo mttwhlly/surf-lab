@@ -1,183 +1,85 @@
-// src/app/hooks/useSurfReportOptimized.ts
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SurfReport } from '../types/surf-report';
 
-interface OptimizedState {
-  report: SurfReport | null;
-  loading: boolean;
-  error: string | null;
-  lastUpdate: Date | null;
-  isPolling: boolean;
-}
-
 export function useSurfReportOptimized() {
-  const [state, setState] = useState<OptimizedState>({
-    report: null,
-    loading: true,
-    error: null,
-    lastUpdate: null,
-    isPolling: false
-  });
-
-  const intervalRef = useRef<NodeJS.Timeout>();
-  const lastReportId = useRef<string | null>(null);
-  const retryCount = useRef(0);
-  const isInitialized = useRef(false);
-
-  // Smart polling interval calculator (pure function, no dependencies)
-  const calculatePollingInterval = useCallback((reportTimestamp?: string) => {
-    if (!reportTimestamp) return 30000; // 30 seconds if no data
-    
-    const reportAge = Date.now() - new Date(reportTimestamp).getTime();
-    const ageHours = reportAge / (1000 * 60 * 60);
-    
-    if (ageHours < 1) return 2 * 60 * 1000;  // 2 minutes for fresh data
-    if (ageHours < 2) return 5 * 60 * 1000;  // 5 minutes for recent data
-    return 10 * 60 * 1000; // 10 minutes for older data
-  }, []);
-
-  const fetchReport = useCallback(async (isInitial = false) => {
-    try {
-      if (isInitial) {
-        console.log('🔄 Initial surf report fetch...');
-        setState(prev => ({ ...prev, loading: true }));
-      }
-
+  const {
+    data: report,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+    dataUpdatedAt,
+    isStale
+  } = useQuery({
+    queryKey: ['surfReport'],
+    queryFn: async (): Promise<SurfReport> => {
+      console.log('🔄 Fetching surf report...');
+      
       const response = await fetch('/api/surf-report', {
         headers: {
-          'Cache-Control': 'no-cache',
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/json',
+          'Cache-Control': 'public, max-age=1800', // Help with browser caching
+        },
       });
 
       if (!response.ok) {
+        console.error(`❌ Surf report API failed: ${response.status} ${response.statusText}`);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const report = await response.json();
+      // Log response headers for monitoring
+      const dataSource = response.headers.get('X-Data-Source');
+      const responseTime = response.headers.get('X-Response-Time');
+      const reportAge = response.headers.get('X-Report-Age-Hours');
       
-      // Only update if it's a new report or initial load
-      if (isInitial || report.id !== lastReportId.current) {
-        if (!isInitial) {
-          console.log('📡 New surf report detected:', report.id);
-        }
-        
-        lastReportId.current = report.id;
-        setState(prev => ({
-          ...prev,
-          report,
-          loading: false,
-          error: null,
-          lastUpdate: new Date()
-        }));
-      } else if (!isInitial) {
-        console.log('📋 No new surf report (same ID)');
-      }
+      console.log(`✅ Got surf report from ${dataSource} in ${responseTime} (age: ${reportAge}h)`);
 
-      retryCount.current = 0; // Reset retry count on success
-      
-    } catch (error) {
-      console.error('❌ Error fetching surf report:', error);
-      
-      retryCount.current++;
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }));
-    }
-  }, []);
-
-  const scheduleNextPoll = useCallback((reportTimestamp?: string) => {
-    // Clear any existing timeout
-    if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
-    }
-
-    const interval = calculatePollingInterval(reportTimestamp);
+      const result = await response.json();
+      return result;
+    },
     
-    intervalRef.current = setTimeout(async () => {
-      await fetchReport(false);
-      // Don't schedule here - let the effect handle it
-    }, interval);
+    // AGGRESSIVE CACHING SETTINGS - REPORTS ARE PRE-GENERATED
+    staleTime: 30 * 60 * 1000,        // 30 minutes - data stays fresh longer
+    gcTime: 4 * 60 * 60 * 1000,       // 4 hours - keep in memory longer
     
-    console.log(`⏰ Next poll scheduled in ${Math.round(interval / 60000)} minutes`);
-  }, [calculatePollingInterval, fetchReport]);
+    // DISABLE AUTOMATIC REFETCHING - RELY ON CRON JOBS
+    refetchInterval: false,            // No background polling needed
+    refetchOnWindowFocus: false,       // Don't refetch on focus
+    refetchOnReconnect: false,         // Don't refetch on reconnect
+    refetchIntervalInBackground: false,
+    
+    // FAST LOADING SETTINGS
+    retry: 1,                          // Only retry once
+    retryDelay: 2000,                  // Quick retry
+    
+    // ALWAYS FETCH ON MOUNT FOR FRESH DATA
+    refetchOnMount: 'always',
+    
+    // NETWORK SETTINGS
+    networkMode: 'online',
+    
+    // Enable query
+    enabled: true,
+  });
 
-  const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
-      intervalRef.current = undefined;
-    }
-    setState(prev => ({ ...prev, isPolling: false }));
-    console.log('⏹️ Polling stopped');
-  }, []);
-
-  const refresh = useCallback(async () => {
-    console.log('🔄 Manual refresh triggered');
-    await fetchReport(false);
-  }, [fetchReport]);
-
-  // Handle visibility changes for battery optimization
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        console.log('👁️ Page hidden - stopping polls');
-        stopPolling();
-      } else {
-        console.log('👁️ Page visible - refreshing and resuming polls');
-        fetchReport(false);
-        setState(prev => ({ ...prev, isPolling: true }));
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchReport, stopPolling]);
-
-  // Schedule next poll when report changes
-  useEffect(() => {
-    if (state.report && !state.loading && state.isPolling) {
-      scheduleNextPoll(state.report.timestamp);
-    }
-  }, [state.report?.id, state.loading, state.isPolling, scheduleNextPoll]); // Only depend on report ID
-
-  // Initialize once
-  useEffect(() => {
-    if (!isInitialized.current) {
-      isInitialized.current = true;
-      
-      console.log('🚀 Initializing optimized surf report hook');
-      
-      // Fetch initial data
-      fetchReport(true).then(() => {
-        // Start polling after initial fetch
-        setState(prev => ({ ...prev, isPolling: true }));
-      });
-    }
-
-    return () => {
-      stopPolling();
-    };
-  }, []); // Empty dependency array - only run once
-
-  // Calculate data freshness
+  // Calculate data freshness for UI indicators
   const getDataFreshness = () => {
-    if (!state.report?.timestamp) return null;
+    if (!report?.timestamp) return null;
     
-    const reportTime = new Date(state.report.timestamp);
+    const reportTime = new Date(report.timestamp);
     const now = new Date();
     const ageMinutes = Math.floor((now.getTime() - reportTime.getTime()) / (1000 * 60));
     
-    if (ageMinutes < 15) return 'fresh';
-    if (ageMinutes < 60) return 'recent';  
-    if (ageMinutes < 240) return 'stale';
-    return 'old';
+    if (ageMinutes < 30) return 'fresh';      // < 30 min (very fresh)
+    if (ageMinutes < 90) return 'recent';     // < 1.5 hours (still good)
+    if (ageMinutes < 240) return 'stale';     // < 4 hours (getting old)
+    return 'old';                             // > 4 hours (quite old)
   };
 
   const getNextUpdateTime = () => {
+    // Cron runs at: 5:00, 9:00, 13:00, 16:00 ET 
     const now = new Date();
     const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
     const currentHour = etNow.getHours();
@@ -186,6 +88,7 @@ export function useSurfReportOptimized() {
     let nextHour = cronHours.find(hour => hour > currentHour);
     
     const nextUpdate = new Date(etNow);
+    
     if (nextHour) {
       nextUpdate.setHours(nextHour, 0, 0, 0);
     } else {
@@ -196,27 +99,49 @@ export function useSurfReportOptimized() {
     return nextUpdate;
   };
 
-  return {
-    report: state.report,
-    loading: state.loading,
-    error: state.error,
-    refetch: refresh,
-    isRefetching: false,
-    lastUpdated: state.lastUpdate,
-    dataFreshness: getDataFreshness(),
-    reportAge: state.report?.timestamp ? 
-      Math.floor((Date.now() - new Date(state.report.timestamp).getTime()) / (1000 * 60)) : null,
-    nextUpdateTime: getNextUpdateTime(),
-    method: 'optimized-polling' as const,
-    connectionState: state.isPolling ? 'polling' : 'idle',
+  // Performance monitoring
+  const getPerformanceMetrics = () => {
+    if (!dataUpdatedAt) return null;
     
-    debugInfo: {
-      method: 'Optimized Polling (Fixed)',
-      isPolling: state.isPolling,
-      retryCount: retryCount.current,
-      lastReportId: lastReportId.current,
-      pollingActive: !!intervalRef.current,
-      initialized: isInitialized.current
-    }
+    const loadTime = dataUpdatedAt - (performance.timing?.navigationStart || 0);
+    return {
+      lastLoadTime: dataUpdatedAt,
+      estimatedLoadDuration: loadTime > 0 && loadTime < 10000 ? loadTime : null,
+      isFromCache: loadTime < 500, // Likely from cache if super fast
+    };
+  };
+
+  return {
+    report: report || null,
+    loading: isLoading,
+    error: error?.message || null,
+    refetch,
+    isRefetching,
+    lastUpdated: dataUpdatedAt,
+    isStale,
+    
+    // UI helper data
+    dataFreshness: getDataFreshness(),
+    nextUpdateTime: getNextUpdateTime(),
+    reportAge: report?.timestamp ? 
+      Math.floor((Date.now() - new Date(report.timestamp).getTime()) / (1000 * 60)) : null,
+    
+    // Performance metrics  
+    performanceMetrics: getPerformanceMetrics(),
+    
+    // Method identifier
+    method: 'optimized-polling' as const,
+    connectionState: isLoading ? 'loading' : 'ready',
+      
+    // Debug info (dev only)
+    debugInfo: process.env.NODE_ENV === 'development' ? {
+      queryKey: ['surfReport'],
+      reportId: report?.id,
+      cachedUntil: report?.cached_until,
+      isStale,
+      isRefetching,
+      environment: process.env.NODE_ENV,
+      optimizationLevel: 'aggressive-caching-with-pre-generation'
+    } : null
   };
 }

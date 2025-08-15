@@ -5,6 +5,7 @@ import { useSurfReportOptimized } from './hooks/useSurfReportOptimized';
 import { SurfReportCard } from './components/surf/SurfReportCard';
 import { ErrorCard } from './components/ui/ErrorCard';
 import { DataFlowDebug } from './components/debug/DataFlowDebug';
+import { PerformanceMonitor } from './components/debug/PerformanceMonitor';
 
 export default function SurfApp() {
   const { 
@@ -17,7 +18,8 @@ export default function SurfApp() {
     nextUpdateTime,
     method,
     connectionState,
-    debugInfo
+    debugInfo,
+    performanceMetrics
   } = useSurfReportOptimized();
 
   return (
@@ -35,6 +37,17 @@ export default function SurfApp() {
 
       {/* Main Container */}
       <div className="mt-8 px-4 max-w-3xl w-full">
+        {/* Performance Monitor - Development Only */}
+        {process.env.NODE_ENV === 'development' && (
+          <PerformanceMonitor
+            report={surfReport}
+            loading={reportLoading}
+            performanceMetrics={performanceMetrics}
+            dataFreshness={dataFreshness}
+            reportAge={reportAge}
+          />
+        )}
+
         {/* AI Surf Report */}
         <SurfReportCard report={surfReport} loading={reportLoading} />
 

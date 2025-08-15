@@ -30,6 +30,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${lacquer.className} antialiased`}>
+      <head>
+        <meta httpEquiv="Cache-Control" content="public, max-age=300, stale-while-revalidate=600" />
+      </head>
       <body>
         <QueryProvider>
           {children}

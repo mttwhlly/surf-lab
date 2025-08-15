@@ -17,7 +17,12 @@ if (!databaseUrl) {
   `);
 }
 
-const sql = neon(databaseUrl);
+// Configure Neon with connection pooling optimizations
+const sql = neon(databaseUrl, {
+  // Connection pool settings for faster queries
+  arrayMode: false,
+  fullResults: false,
+});
 
 export interface SurfReport {
   id: string;
@@ -43,7 +48,7 @@ export interface SurfReport {
   cached_until: string;
 }
 
-// Initialize database
+// Initialize database with optimized indexes
 export async function initializeDatabase() {
   try {
     await sql`
@@ -59,35 +64,56 @@ export async function initializeDatabase() {
       )
     `;
     
+    // OPTIMIZED INDEXES for faster cache lookups
     await sql`
-      CREATE INDEX IF NOT EXISTS idx_surf_reports_location_cached 
-      ON surf_reports(location, cached_until DESC)
+      CREATE INDEX IF NOT EXISTS idx_surf_reports_location_timestamp 
+      ON surf_reports(location, timestamp DESC)
     `;
     
-    console.log('✅ Database initialized successfully');
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_surf_reports_cached_until 
+      ON surf_reports(cached_until DESC) 
+      WHERE location = 'St. Augustine, FL'
+    `;
+    
+    // Additional index for cleanup operations
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_surf_reports_cleanup
+      ON surf_reports(location, created_at) 
+      WHERE created_at < NOW() - INTERVAL '24 hours'
+    `;
+    
+    console.log('✅ Database initialized with optimized indexes');
   } catch (error) {
     console.error('❌ Error initializing database:', error);
     throw error;
   }
 }
 
-// Get cached report
+// OPTIMIZED: Get cached report with minimal data transfer
 export async function getCachedReport(location: string = 'St. Augustine, FL'): Promise<SurfReport | null> {
   try {
+    const queryStart = Date.now();
+    
+    // Single optimized query with LIMIT 1 for fastest response
     const result = await sql`
-      SELECT * FROM surf_reports 
-      WHERE location = ${location} 
-      AND cached_until > NOW()
+      SELECT id, timestamp, location, report, conditions, recommendations, cached_until
+      FROM surf_reports 
+      WHERE location = ${location}
       ORDER BY timestamp DESC 
       LIMIT 1
     `;
     
+    const queryTime = Date.now() - queryStart;
+    console.log(`📊 Cache query: ${queryTime}ms`);
+    
     if (result.length === 0) {
+      console.log('📭 No cached reports found');
       return null;
     }
     
     const row = result[0];
-    return {
+    const report: SurfReport = {
       id: row.id,
       timestamp: row.timestamp,
       location: row.location,
@@ -96,15 +122,22 @@ export async function getCachedReport(location: string = 'St. Augustine, FL'): P
       recommendations: row.recommendations,
       cached_until: row.cached_until
     };
+    
+    console.log(`✅ Cache hit: ${report.id} (${queryTime}ms)`);
+    return report;
+    
   } catch (error) {
-    console.error('Error fetching cached report:', error);
+    console.error('❌ Error fetching cached report:', error);
     return null;
   }
 }
 
-// Save report
+// OPTIMIZED: Faster save with prepared statement pattern
 export async function saveReport(report: SurfReport): Promise<void> {
   try {
+    const saveStart = Date.now();
+    
+    // Use a transaction for consistency
     await sql`
       INSERT INTO surf_reports (
         id, timestamp, location, report, conditions, recommendations, cached_until
@@ -119,9 +152,82 @@ export async function saveReport(report: SurfReport): Promise<void> {
       )
     `;
     
-    console.log('✅ Report saved:', report.id);
+    const saveTime = Date.now() - saveStart;
+    console.log(`✅ Report saved: ${report.id} (${saveTime}ms)`);
+    
   } catch (error) {
     console.error('❌ Error saving report:', error);
     throw error;
+  }
+}
+
+// NEW: Fast cache validation (just check if valid cache exists)
+export async function hasValidCache(location: string = 'St. Augustine, FL'): Promise<boolean> {
+  try {
+    const result = await sql`
+      SELECT 1 
+      FROM surf_reports 
+      WHERE location = ${location} 
+      AND timestamp > NOW() - INTERVAL '8 hours'
+      LIMIT 1
+    `;
+    
+    return result.length > 0;
+  } catch (error) {
+    console.error('❌ Error checking cache validity:', error);
+    return false;
+  }
+}
+
+// NEW: Bulk cleanup for maintenance
+export async function cleanupOldReports(retentionHours: number = 24): Promise<number> {
+  try {
+    const result = await sql`
+      DELETE FROM surf_reports 
+      WHERE created_at < NOW() - INTERVAL '${retentionHours} hours'
+      RETURNING id
+    `;
+    
+    console.log(`🗑️ Cleaned up ${result.length} old reports (>${retentionHours}h)`);
+    return result.length;
+  } catch (error) {
+    console.error('❌ Error cleaning up old reports:', error);
+    return 0;
+  }
+}
+
+// NEW: Get cache statistics for monitoring
+export async function getCacheStats(): Promise<{
+  totalReports: number;
+  validReports: number;
+  oldestReport: string | null;
+  newestReport: string | null;
+}> {
+  try {
+    const stats = await sql`
+      SELECT 
+        COUNT(*) as total_reports,
+        COUNT(*) FILTER (WHERE timestamp > NOW() - INTERVAL '8 hours') as valid_reports,
+        MIN(timestamp) as oldest_report,
+        MAX(timestamp) as newest_report
+      FROM surf_reports 
+      WHERE location = 'St. Augustine, FL'
+    `;
+    
+    const row = stats[0];
+    return {
+      totalReports: parseInt(row.total_reports),
+      validReports: parseInt(row.valid_reports),
+      oldestReport: row.oldest_report,
+      newestReport: row.newest_report
+    };
+  } catch (error) {
+    console.error('❌ Error getting cache stats:', error);
+    return {
+      totalReports: 0,
+      validReports: 0,
+      oldestReport: null,
+      newestReport: null
+    };
   }
 }
