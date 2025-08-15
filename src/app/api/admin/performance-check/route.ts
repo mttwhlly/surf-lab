@@ -48,23 +48,52 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Calculate next cron run
+    // FIXED: Calculate next cron run with proper timezone handling
     const now = new Date();
+    
+    // Get current time in Eastern timezone
     const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    const currentHour = etNow.getHours();
+    const utcNow = new Date(); // UTC time for comparison
+    
+    // Current hour in ET
+    const currentHourET = etNow.getHours();
+    const currentMinuteET = etNow.getMinutes();
+    
+    // Cron runs at: 5, 9, 13, 16 (5AM, 9AM, 1PM, 4PM ET)
     const cronHours = [5, 9, 13, 16];
     
-    let nextCronHour = cronHours.find(hour => hour > currentHour);
-    const nextCron = new Date(etNow);
+    // Find next cron hour
+    let nextCronHour = cronHours.find(hour => hour > currentHourET);
+    
+    // Calculate next cron time in ET
+    const nextCronET = new Date(etNow);
     
     if (nextCronHour) {
-      nextCron.setHours(nextCronHour, 0, 0, 0);
+      // Next cron is today
+      nextCronET.setHours(nextCronHour, 0, 0, 0);
     } else {
-      nextCron.setDate(nextCron.getDate() + 1);
-      nextCron.setHours(5, 0, 0, 0);
+      // Next cron is tomorrow at 5 AM
+      nextCronET.setDate(nextCronET.getDate() + 1);
+      nextCronET.setHours(5, 0, 0, 0);
     }
     
-    const hoursToNextCron = (nextCron.getTime() - now.getTime()) / (1000 * 60 * 60);
+    // Convert back to UTC for accurate time difference calculation
+    const nextCronUTC = new Date(nextCronET.toLocaleString("en-US", {timeZone: "UTC"}));
+    
+    // Calculate time difference in hours
+    const millisecondsToNext = nextCronUTC.getTime() - utcNow.getTime();
+    const hoursToNext = millisecondsToNext / (1000 * 60 * 60);
+    
+    // Debug logging
+    console.log('🕐 Cron calculation debug:', {
+      currentUTC: utcNow.toISOString(),
+      currentET: etNow.toLocaleString(),
+      currentHourET,
+      nextCronET: nextCronET.toLocaleString(),
+      nextCronUTC: nextCronUTC.toISOString(),
+      millisecondsToNext,
+      hoursToNext: Math.round(hoursToNext * 10) / 10
+    });
     
     // Performance assessment
     const performanceGrade = 
@@ -92,9 +121,12 @@ export async function GET(request: NextRequest) {
         cached_until: cachedReport?.cached_until
       },
       cron: {
-        next_run_et: nextCron.toLocaleString('en-US', {timeZone: 'America/New_York'}),
-        hours_until_next_run: Math.round(hoursToNextCron * 10) / 10,
-        expected_times: ['5:00 AM', '9:00 AM', '1:00 PM', '4:00 PM'],
+        current_time_et: etNow.toLocaleString('en-US', {timeZone: 'America/New_York'}),
+        current_time_utc: utcNow.toISOString(),
+        next_run_et: nextCronET.toLocaleString('en-US', {timeZone: 'America/New_York'}),
+        next_run_utc: nextCronUTC.toISOString(),
+        hours_until_next_run: Math.round(hoursToNext * 10) / 10,
+        expected_times: ['5:00 AM ET', '9:00 AM ET', '1:00 PM ET', '4:00 PM ET'],
         timezone: 'America/New_York'
       },
       api_test: {
@@ -115,7 +147,7 @@ export async function GET(request: NextRequest) {
     // Add recommendations
     if (cacheStatus === 'none') {
       healthCheck.recommendations.push('⚠️ No cached report - cron jobs may not be working');
-    } else if (cacheStatus === 'expired' && hoursToNextCron > 0.5) {
+    } else if (cacheStatus === 'expired' && hoursToNext > 0.5) {
       healthCheck.recommendations.push('⚠️ Cache expired - manual cron trigger recommended');
     } else if (apiTestTime > 2000) {
       healthCheck.recommendations.push('🐌 Slow API response - check cron job frequency');
@@ -123,8 +155,13 @@ export async function GET(request: NextRequest) {
       healthCheck.recommendations.push('✅ Excellent performance - optimization working perfectly');
     }
     
-    if (hoursToNextCron < 0.1) {
+    // Fixed cron timing recommendations
+    if (hoursToNext < 0.1 && hoursToNext > -0.1) {
       healthCheck.recommendations.push('🔄 Cron job should run very soon');
+    } else if (hoursToNext < 0) {
+      healthCheck.recommendations.push('⚠️ Cron job appears overdue - check scheduler');
+    } else if (hoursToNext > 6) {
+      healthCheck.recommendations.push('⏰ Next cron job is far away - check if additional runs needed');
     }
     
     // Overall status
