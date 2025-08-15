@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         'User-Agent': 'SurfLab-Performance-Check/1.0',
         'Accept': 'application/json'
       },
-      signal: AbortSignal.timeout(5000) // 5 second timeout
+      signal: AbortSignal.timeout(5000)
     });
     
     const apiTestTime = Date.now() - apiTestStart;
@@ -38,61 +38,86 @@ export async function GET(request: NextRequest) {
       
       if (reportAge < 2 * 60 * 60 * 1000) { // < 2 hours
         cacheStatus = 'fresh';
-        isOptimal = apiTestTime < 500; // Should be very fast with fresh cache
+        isOptimal = apiTestTime < 500;
       } else if (reportAge < 6 * 60 * 60 * 1000) { // < 6 hours  
         cacheStatus = 'stale';
-        isOptimal = apiTestTime < 1000; // Should still be reasonably fast
+        isOptimal = apiTestTime < 1000;
       } else {
         cacheStatus = 'expired';
-        isOptimal = false; // Will trigger fresh generation
+        isOptimal = false;
       }
     }
     
-    // FIXED: Calculate next cron run with proper timezone handling
+    // CORRECTED: Proper timezone calculation
     const now = new Date();
     
-    // Get current time in Eastern timezone
-    const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-    const utcNow = new Date(); // UTC time for comparison
+    // Create a date in Eastern timezone
+    const etFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
     
-    // Current hour in ET
-    const currentHourET = etNow.getHours();
-    const currentMinuteET = etNow.getMinutes();
+    const etParts = etFormatter.formatToParts(now);
+    const etYear = parseInt(etParts.find(p => p.type === 'year')?.value || '0');
+    const etMonth = parseInt(etParts.find(p => p.type === 'month')?.value || '0') - 1; // Month is 0-indexed
+    const etDay = parseInt(etParts.find(p => p.type === 'day')?.value || '0');
+    const etHour = parseInt(etParts.find(p => p.type === 'hour')?.value || '0');
+    const etMinute = parseInt(etParts.find(p => p.type === 'minute')?.value || '0');
     
-    // Cron runs at: 5, 9, 13, 16 (5AM, 9AM, 1PM, 4PM ET)
+    // Current time display
+    const currentTimeET = now.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    // Cron hours: 5, 9, 13, 16 (5AM, 9AM, 1PM, 4PM ET)
     const cronHours = [5, 9, 13, 16];
     
     // Find next cron hour
-    let nextCronHour = cronHours.find(hour => hour > currentHourET);
+    let nextCronHour = cronHours.find(hour => hour > etHour);
     
-    // Calculate next cron time in ET
-    const nextCronET = new Date(etNow);
+    // Create next cron time in ET
+    let nextCronET = new Date();
+    nextCronET.setFullYear(etYear, etMonth, etDay);
     
     if (nextCronHour) {
       // Next cron is today
       nextCronET.setHours(nextCronHour, 0, 0, 0);
     } else {
       // Next cron is tomorrow at 5 AM
-      nextCronET.setDate(nextCronET.getDate() + 1);
+      nextCronET.setDate(etDay + 1);
       nextCronET.setHours(5, 0, 0, 0);
     }
     
-    // Convert back to UTC for accurate time difference calculation
-    const nextCronUTC = new Date(nextCronET.toLocaleString("en-US", {timeZone: "UTC"}));
+    // Convert to UTC for calculation
+    const etOffset = now.getTimezoneOffset() + 
+      (nextCronET.getTimezoneOffset() - new Date().getTimezoneOffset());
+    const nextCronUTC = new Date(nextCronET.getTime() - (etOffset * 60000));
     
-    // Calculate time difference in hours
-    const millisecondsToNext = nextCronUTC.getTime() - utcNow.getTime();
-    const hoursToNext = millisecondsToNext / (1000 * 60 * 60);
+    // Calculate hours until next cron
+    const hoursUntilNext = (nextCronUTC.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    // Debug logging
-    console.log('🕐 Cron calculation debug:', {
-      currentUTC: utcNow.toISOString(),
-      currentET: etNow.toLocaleString(),
-      currentHourET,
-      nextCronET: nextCronET.toLocaleString(),
-      nextCronUTC: nextCronUTC.toISOString(),
-      millisecondsToNext,
-      hoursToNext: Math.round(hoursToNext * 10) / 10
+    // Format next cron display
+    const nextCronDisplay = nextCronET.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     });
     
     // Performance assessment
@@ -121,13 +146,17 @@ export async function GET(request: NextRequest) {
         cached_until: cachedReport?.cached_until
       },
       cron: {
-        current_time_et: etNow.toLocaleString('en-US', {timeZone: 'America/New_York'}),
-        current_time_utc: utcNow.toISOString(),
-        next_run_et: nextCronET.toLocaleString('en-US', {timeZone: 'America/New_York'}),
-        next_run_utc: nextCronUTC.toISOString(),
-        hours_until_next_run: Math.round(hoursToNext * 10) / 10,
+        current_time_et: currentTimeET,
+        current_hour_et: etHour,
+        next_run_et: nextCronDisplay,
+        hours_until_next_run: Math.round(hoursUntilNext * 10) / 10,
         expected_times: ['5:00 AM ET', '9:00 AM ET', '1:00 PM ET', '4:00 PM ET'],
-        timezone: 'America/New_York'
+        timezone: 'America/New_York',
+        debug: {
+          raw_et_hour: etHour,
+          next_cron_hour: nextCronHour || 'tomorrow 5AM',
+          calculation_method: 'Intl.DateTimeFormat'
+        }
       },
       api_test: {
         endpoint_responsive: testResponse.ok,
@@ -144,10 +173,10 @@ export async function GET(request: NextRequest) {
       overall_status: 'unknown'
     };
     
-    // Add recommendations
+    // Add recommendations based on corrected timing
     if (cacheStatus === 'none') {
       healthCheck.recommendations.push('⚠️ No cached report - cron jobs may not be working');
-    } else if (cacheStatus === 'expired' && hoursToNext > 0.5) {
+    } else if (cacheStatus === 'expired' && hoursUntilNext > 0.5) {
       healthCheck.recommendations.push('⚠️ Cache expired - manual cron trigger recommended');
     } else if (apiTestTime > 2000) {
       healthCheck.recommendations.push('🐌 Slow API response - check cron job frequency');
@@ -155,13 +184,13 @@ export async function GET(request: NextRequest) {
       healthCheck.recommendations.push('✅ Excellent performance - optimization working perfectly');
     }
     
-    // Fixed cron timing recommendations
-    if (hoursToNext < 0.1 && hoursToNext > -0.1) {
+    // Cron timing recommendations
+    if (Math.abs(hoursUntilNext) < 0.1) {
       healthCheck.recommendations.push('🔄 Cron job should run very soon');
-    } else if (hoursToNext < 0) {
+    } else if (hoursUntilNext < 0) {
       healthCheck.recommendations.push('⚠️ Cron job appears overdue - check scheduler');
-    } else if (hoursToNext > 6) {
-      healthCheck.recommendations.push('⏰ Next cron job is far away - check if additional runs needed');
+    } else if (hoursUntilNext > 0 && hoursUntilNext < 1) {
+      healthCheck.recommendations.push('⏰ Next cron job within the hour');
     }
     
     // Overall status
