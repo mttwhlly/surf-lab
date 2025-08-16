@@ -1,8 +1,11 @@
 {
-  "crons": [
-    {
-      "path": "/api/admin/refresh-forecast",
-      "schedule": "0 10 * * *"
+  "functions": {
+    "src/app/api/admin/request-forecast/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/surf-report/route.ts": {
+      "maxDuration": 30
     }
-  ]
+  },
+  "regions": ["iad1"]
 }
