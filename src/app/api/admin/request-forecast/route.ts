@@ -3,15 +3,14 @@ import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || '');
 
-// Configure timeout for this function
-export const maxDuration = 60; // 60 seconds
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    console.log('🕐 CRON JOB STARTED:', new Date().toISOString());
+    console.log('🕐 CRON JOB STARTED (BUN-POWERED):', new Date().toISOString());
     
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -48,38 +47,43 @@ export async function GET(request: NextRequest) {
     
     console.log(`🗑️ Cleared ${clearCurrentCache.length} current reports`);
 
-    // STEP 3: Attempt fresh generation with shorter timeout
-    console.log('🚀 ATTEMPTING FRESH GENERATION...');
+    // STEP 3: Call Bun service to generate fresh report
+    console.log('🚀 CALLING BUN SERVICE FOR FRESH GENERATION...');
     
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
     const host = request.headers.get('host');
-    const baseUrl = `${protocol}://${host}`;
+    const vercelUrl = `${protocol}://${host}`;
+    
+    const bunServiceUrl = process.env.BUN_SERVICE_URL;
+    if (!bunServiceUrl) {
+      throw new Error('BUN_SERVICE_URL not configured');
+    }
     
     const generationStart = Date.now();
     
     try {
-      // Use shorter timeout for the generation call
-      const reportResponse = await fetch(`${baseUrl}/api/surf-report`, {
-        method: 'GET',
+      const bunResponse = await fetch(`${bunServiceUrl}/cron/generate-fresh-report`, {
+        method: 'POST',
         headers: {
-          'User-Agent': 'SurfLab-Cron-PreGeneration/1.0',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache',
-          'X-Cron-Generation': 'true'
+          'Content-Type': 'application/json',
+          'User-Agent': 'SurfLab-Vercel-Cron/1.0'
         },
-        signal: AbortSignal.timeout(30000) // 30 second timeout
+        body: JSON.stringify({
+          cronSecret: process.env.CRON_SECRET,
+          vercelUrl: vercelUrl
+        }),
+        signal: AbortSignal.timeout(45000) // 45 second timeout
       });
 
       const generationTime = Date.now() - generationStart;
 
-      if (reportResponse.ok) {
-        const reportData = await reportResponse.json();
+      if (bunResponse.ok) {
+        const bunResult = await bunResponse.json();
         
-        console.log('✅ FRESH REPORT GENERATED:', {
-          reportId: reportData.id,
+        console.log('✅ BUN SERVICE SUCCESS:', {
+          reportId: bunResult.actions?.new_report_id,
           generationTime: `${generationTime}ms`,
-          waveHeight: reportData.conditions?.wave_height_ft,
-          score: reportData.conditions?.surfability_score
+          bunPerformance: bunResult.performance
         });
         
         const totalTime = Date.now() - startTime;
@@ -88,31 +92,38 @@ export async function GET(request: NextRequest) {
           success: true,
           timestamp: new Date().toISOString(),
           source: 'external-cron-coolify',
-          method: 'pre-generation-success',
+          method: 'bun-service-generation',
           performance: {
             total_time_ms: totalTime,
-            generation_time_ms: generationTime,
-            within_timeout: totalTime < 50000 // 50 second buffer
+            bun_generation_time_ms: generationTime,
+            bun_ai_time_ms: bunResult.performance?.ai_generation_ms,
+            within_timeout: totalTime < 50000
           },
           actions: {
             old_reports_cleaned: cleanupResult.length,
             current_cache_cleared: clearCurrentCache.length,
-            new_report_generated: true,
-            new_report_id: reportData.id,
-            new_report_cached_until: reportData.cached_until
+            new_report_generated: bunResult.success,
+            new_report_id: bunResult.actions?.new_report_id,
+            bun_backend: bunResult.backend
           },
-          note: 'Fresh surf report successfully pre-generated'
+          bun_service: {
+            url: bunServiceUrl,
+            performance: bunResult.performance,
+            runtime: bunResult.performance?.runtime
+          },
+          note: 'Fresh surf report successfully generated via Bun service'
         };
 
-        console.log('🎯 CRON JOB COMPLETED SUCCESSFULLY');
+        console.log('🎯 CRON JOB COMPLETED SUCCESSFULLY (BUN-POWERED)');
         return NextResponse.json(response);
         
       } else {
-        throw new Error(`Generation failed: ${reportResponse.status}`);
+        const errorText = await bunResponse.text();
+        throw new Error(`Bun service failed: ${bunResponse.status} - ${errorText}`);
       }
       
     } catch (generationError) {
-      console.error('⚠️ Generation failed, but cache cleared:', generationError);
+      console.error('⚠️ Bun service failed, but cache cleared:', generationError);
       
       const partialTime = Date.now() - startTime;
       
@@ -124,19 +135,24 @@ export async function GET(request: NextRequest) {
         method: 'cache-clear-only',
         performance: {
           total_time_ms: partialTime,
-          generation_failed: true,
-          generation_error: generationError instanceof Error ? generationError.message : String(generationError)
+          bun_generation_failed: true,
+          bun_generation_error: generationError instanceof Error ? generationError.message : String(generationError)
         },
         actions: {
           old_reports_cleaned: cleanupResult.length,
           current_cache_cleared: clearCurrentCache.length,
           new_report_generated: false,
-          fallback_strategy: 'next-user-request-will-generate'
+          fallback_strategy: 'next-user-request-will-generate-via-bun'
         },
-        note: 'Cache cleared - next user request will generate fresh report'
+        bun_service: {
+          url: bunServiceUrl,
+          status: 'failed',
+          error: generationError instanceof Error ? generationError.message : String(generationError)
+        },
+        note: 'Cache cleared - next user request will generate fresh report via Bun service'
       };
 
-      console.log('⚡ CRON JOB COMPLETED (cache cleared, generation will happen on next user request)');
+      console.log('⚡ CRON JOB COMPLETED (cache cleared, Bun generation will happen on next user request)');
       return NextResponse.json(response);
     }
       

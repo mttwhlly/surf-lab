@@ -1,18 +1,6 @@
+// src/app/api/surf-report/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { z } from 'zod';
 import { getCachedReport, saveReport, initializeDatabase } from '@/lib/db';
-
-// AI Response Schema
-const surfReportSchema = z.object({
-  report: z.string().describe("A natural, conversational surf report in the voice of a local St. Augustine surfer"),
-  boardRecommendation: z.string().describe("What type of board to bring (longboard, shortboard, funboard, etc.)"),
-  wetsuitAdvice: z.string().optional().describe("Wetsuit thickness recommendation if needed"),
-  skillLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe("Recommended skill level for current conditions"),
-  bestSpots: z.array(z.string()).optional().describe("Best surf spots in St. Augustine for these conditions"),
-  timingAdvice: z.string().optional().describe("Best time to surf or when conditions might improve")
-});
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -41,7 +29,6 @@ export async function GET(request: NextRequest) {
       });
       
       // Serve ANY cached report that's less than 8 hours old
-      // Users get instant responses, cron jobs keep data fresh
       if (ageHours < 8) {
         const cacheStatus = ageHours < 1 ? 'fresh' : ageHours < 4 ? 'good' : 'stale-but-usable';
         
@@ -55,7 +42,7 @@ export async function GET(request: NextRequest) {
             'X-Report-Age-Hours': `${Math.round(ageHours * 10) / 10}`,
             'X-Cache-Valid-Until': cachedReport.cached_until,
             'X-API-Calls-Made': '0',
-            'Cache-Control': 'public, max-age=1800, stale-while-revalidate=3600' // 30min cache, 1hr stale
+            'Cache-Control': 'public, max-age=1800, stale-while-revalidate=3600'
           }
         });
       }
@@ -63,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     // STEP 2: NO CACHE OR EXPIRED - GENERATE FRESH (SHOULD BE RARE)
     console.log('🚨 GENERATING FRESH REPORT - THIS SHOULD BE RARE!');
-    return await generateFreshReport(request, startTime);
+    return await generateFreshReportViaBun(request, startTime);
 
   } catch (error) {
     console.error('❌ SURF REPORT ERROR:', error);
@@ -99,8 +86,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function generateFreshReport(request: NextRequest, startTime: number) {
-  console.log('🚨 FRESH GENERATION STARTING...');
+async function generateFreshReportViaBun(request: NextRequest, startTime: number) {
+  console.log('🚨 FRESH GENERATION VIA BUN SERVICE...');
   
   try {
     // Initialize database
@@ -119,7 +106,7 @@ async function generateFreshReport(request: NextRequest, startTime: number) {
         'User-Agent': 'SurfLab-AI/1.0',
         'X-Force-Fresh': 'true'
       },
-      signal: AbortSignal.timeout(15000) // 15 second timeout
+      signal: AbortSignal.timeout(15000)
     });
     
     const surfDataTime = Date.now() - surfDataStart;
@@ -137,66 +124,42 @@ async function generateFreshReport(request: NextRequest, startTime: number) {
       score: surfData.score
     });
     
-    // STEP 3: GENERATE AI REPORT
-    console.log('🤖 Generating AI surf report...');
+    // STEP 3: CALL BUN AI SERVICE
+    console.log('🤖 Calling Bun AI service...');
     const aiStart = Date.now();
     
-    const prompt = `You are a local St. Augustine surfer giving a casual surf report to fellow surfers. 
-
-Current Conditions:
-- Wave Height: ${surfData.details.wave_height_ft} feet
-- Wave Period: ${surfData.details.wave_period_sec} seconds  
-- Wind: ${surfData.details.wind_speed_kts} knots from ${surfData.details.wind_direction_deg}°
-- Tide: ${surfData.details.tide_state} at ${surfData.details.tide_height_ft} feet
-- Air Temp: ${surfData.weather.air_temperature_f}°F
-- Water Temp: ${surfData.weather.water_temperature_f}°F
-- Weather: ${surfData.weather.weather_description}
-- Surf Score: ${surfData.score}/100
-
-Write a natural, conversational surf report (2-3 paragraphs) that captures:
-- Current wave quality and rideability
-- How the wind is affecting conditions
-- Tide timing and impact
-- Board recommendations
-- Best spots in St. Augustine area
-- Any timing advice for better conditions
-
-Keep it authentic to Florida's East Coast surf culture - casual, informative, and stoked about good waves when they happen. Mention specific St. Augustine spots like Vilano Beach, St. Augustine Pier, or Anastasia State Park when relevant.`;
-
-    const { object: aiResponse } = await generateObject({
-      model: openai('gpt-4o-mini'),
-      schema: surfReportSchema,
-      prompt,
-      temperature: 0.7,
+    const bunServiceUrl = process.env.BUN_SERVICE_URL;
+    if (!bunServiceUrl) {
+      throw new Error('BUN_SERVICE_URL not configured');
+    }
+    
+    const aiResponse = await fetch(`${bunServiceUrl}/generate-surf-report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'SurfLab-Vercel/1.0'
+      },
+      body: JSON.stringify({
+        surfData,
+        apiKey: process.env.BUN_API_SECRET
+      }),
+      signal: AbortSignal.timeout(30000) // 30 second timeout
     });
 
-    const aiTime = Date.now() - aiStart;
-    console.log(`🤖 AI generation completed: ${aiTime}ms`);
+    if (!aiResponse.ok) {
+      throw new Error(`Bun AI service failed: ${aiResponse.status}`);
+    }
 
-    // Create complete report object
-    const report = {
-      id: `surf_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      timestamp: new Date().toISOString(),
-      location: surfData.location,
-      report: aiResponse.report,
-      conditions: {
-        wave_height_ft: surfData.details.wave_height_ft,
-        wave_period_sec: surfData.details.wave_period_sec,
-        wind_speed_kts: surfData.details.wind_speed_kts,
-        wind_direction_deg: surfData.details.wind_direction_deg,
-        tide_state: surfData.details.tide_state,
-        weather_description: surfData.weather.weather_description,
-        surfability_score: surfData.score
-      },
-      recommendations: {
-        board_type: aiResponse.boardRecommendation,
-        wetsuit_thickness: aiResponse.wetsuitAdvice,
-        skill_level: aiResponse.skillLevel,
-        best_spots: aiResponse.bestSpots,
-        timing_advice: aiResponse.timingAdvice
-      },
-      cached_until: calculateOptimalCacheExpiration()
-    };
+    const aiResult = await aiResponse.json();
+    const aiTime = Date.now() - aiStart;
+    
+    console.log(`🤖 Bun AI generation completed: ${aiTime}ms`);
+
+    if (!aiResult.success || !aiResult.report) {
+      throw new Error('Bun AI service returned invalid response');
+    }
+
+    const report = aiResult.report;
 
     // Save to database
     await saveReport(report);
@@ -207,18 +170,19 @@ Keep it authentic to Florida's East Coast surf culture - casual, informative, an
     
     return NextResponse.json(report, {
       headers: {
-        'X-Data-Source': 'fresh-generation',
+        'X-Data-Source': 'bun-ai-service',
         'X-Cache-Status': 'miss',
         'X-Response-Time': `${totalTime}ms`,
         'X-Surf-Data-Time': `${surfDataTime}ms`,
         'X-AI-Generation-Time': `${aiTime}ms`,
         'X-Cache-Valid-Until': report.cached_until,
-        'X-API-Calls-Made': '2'
+        'X-API-Calls-Made': '2',
+        'X-AI-Backend': 'bun-service'
       }
     });
 
   } catch (error) {
-    console.error('❌ Fresh generation failed:', error);
+    console.error('❌ Fresh generation via Bun failed:', error);
     throw error;
   }
 }

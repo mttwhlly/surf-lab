@@ -64,7 +64,7 @@ export async function initializeDatabase() {
       )
     `;
     
-    // OPTIMIZED INDEXES for faster cache lookups
+    // FIXED INDEXES - Remove problematic WHERE clauses that reference functions
     await sql`
       CREATE INDEX IF NOT EXISTS idx_surf_reports_location_timestamp 
       ON surf_reports(location, timestamp DESC)
@@ -72,21 +72,38 @@ export async function initializeDatabase() {
     
     await sql`
       CREATE INDEX IF NOT EXISTS idx_surf_reports_cached_until 
-      ON surf_reports(cached_until DESC) 
-      WHERE location = 'St. Augustine, FL'
+      ON surf_reports(cached_until DESC)
     `;
     
-    // Additional index for cleanup operations
+    // FIXED: Simple index without function-based WHERE clause
     await sql`
       CREATE INDEX IF NOT EXISTS idx_surf_reports_cleanup
-      ON surf_reports(location, created_at) 
-      WHERE created_at < NOW() - INTERVAL '24 hours'
+      ON surf_reports(location, created_at)
     `;
     
-    console.log('✅ Database initialized with optimized indexes');
+    console.log('✅ Database initialized with fixed indexes');
   } catch (error) {
     console.error('❌ Error initializing database:', error);
-    throw error;
+    
+    // If indexes fail, at least ensure table exists
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS surf_reports (
+          id TEXT PRIMARY KEY,
+          timestamp TIMESTAMPTZ DEFAULT NOW(),
+          location TEXT NOT NULL,
+          report TEXT NOT NULL,
+          conditions JSONB NOT NULL,
+          recommendations JSONB NOT NULL,
+          cached_until TIMESTAMPTZ NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      console.log('✅ Table created successfully (indexes skipped due to errors)');
+    } catch (tableError) {
+      console.error('❌ Critical: Table creation failed:', tableError);
+      throw tableError;
+    }
   }
 }
 
