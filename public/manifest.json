@@ -1,15 +1,15 @@
 {
-  "name": "SURF LAB",
-  "short_name": "SURF LAB",
-  "description": "Real-time surf conditions with wave visualization",
+  "name": "Can I Surf Today?",
+  "short_name": "Surf Report",
+  "description": "Real-time AI-powered surf conditions for St. Augustine, Florida with wave height, wind data, and surf recommendations",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0077cc",
+  "background_color": "#000000",
+  "theme_color": "#ffffff",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en-US",
-  "categories": ["sports", "weather", "lifestyle"],
+  "categories": ["sports", "weather", "lifestyle", "travel"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -22,15 +22,39 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/og-image-square.png",
+      "sizes": "1200x1200", 
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
-      "name": "Check Conditions",
-      "short_name": "Check",
-      "description": "Quick check of current surf conditions",
+      "name": "Check Current Conditions",
+      "short_name": "Current",
+      "description": "View current surf conditions and AI report",
       "url": "/",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ 
+        "src": "/icons/icon-192.png", 
+        "sizes": "192x192",
+        "purpose": "any"
+      }]
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Can I Surf Today?"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

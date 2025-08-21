@@ -28,7 +28,7 @@ export default function SurfApp() {
       <div className="mt-8">
         <Image 
           src="/wave-logo.svg"
-          alt="Surf Lab Logo"
+          alt="Can I Surf Today Logo"
           width={64}
           height={64}
           priority
@@ -36,17 +36,7 @@ export default function SurfApp() {
       </div>
 
       {/* Main Container */}
-      <div className="mt-8 px-4 max-w-3xl w-full">
-        {/* Performance Monitor - Development Only */}
-        {process.env.NODE_ENV === 'development' && (
-          <PerformanceMonitor
-            report={surfReport}
-            loading={reportLoading}
-            performanceMetrics={performanceMetrics}
-            dataFreshness={dataFreshness}
-            reportAge={reportAge}
-          />
-        )}
+      <div className="mt-8 px-4 pb-8 max-w-3xl w-full">
 
         {/* AI Surf Report */}
         <SurfReportCard report={surfReport} loading={reportLoading} />
@@ -55,18 +45,19 @@ export default function SurfApp() {
         {reportError && (
           <ErrorCard message={reportError} />
         )}
-      </div>
 
-      <div className="mx-auto max-w-2xl w-full px-4 mt-6">
-        <pre className='text-sm text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl'>
-          <span className='mr-2 font-bold'>Heads up!</span>
-          This AI surf report uses real ocean and weather data, however, it can make mistakes so always check conditions yourself before paddling out.
-        </pre>
-      </div>
+        {/* Performance Monitor & Debugger - Development Only */}
+        {process.env.NODE_ENV === 'development' && (
+          <>
+          <PerformanceMonitor
+            report={surfReport}
+            loading={reportLoading}
+            performanceMetrics={performanceMetrics}
+            dataFreshness={dataFreshness}
+            reportAge={reportAge}
+          />
 
-      {/* Debug Component - Shows data flow in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="max-w-2xl w-full px-4">
+        {/* Debug Component - Shows data flow in development */}
           <DataFlowDebug 
             report={surfReport}
             loading={reportLoading}
@@ -78,8 +69,16 @@ export default function SurfApp() {
             connectionState={connectionState}
             debugInfo={debugInfo}
           />
-        </div>
+        </>
       )}
+      </div>
+
+      <div className="mx-auto max-w-2xl w-full px-4 mt-6">
+        <pre className='text-sm text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl'>
+          <span className='mr-2 font-bold'>Heads up!</span>
+          This AI surf report uses real ocean and weather data, however, it can make mistakes so always check conditions yourself before paddling out.
+        </pre>
+      </div>
     </div>
   );
 }
