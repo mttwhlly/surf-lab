@@ -1,11 +1,11 @@
 {
-  "name": "Can I Surf Today?",
-  "short_name": "Surf Report",
+  "name": "Can I Surf Today? - St. Augustine",
+  "short_name": "Can I Surf?",
   "description": "Real-time AI-powered surf conditions for St. Augustine, Florida with wave height, wind data, and surf recommendations",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "theme_color": "#0077cc",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en-US",
@@ -49,7 +49,7 @@
       "sizes": "1200x630",
       "type": "image/png",
       "platform": "wide",
-      "label": "Can I Surf Today?"
+      "label": "Can I Surf Today? main interface"
     }
   ],
   "related_applications": [],

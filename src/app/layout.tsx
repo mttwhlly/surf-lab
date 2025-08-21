@@ -16,12 +16,12 @@ const lacquer = Lacquer({
 // Get the base URL for absolute URLs in metadata
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
                process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-               'https://surf-report-rouge.vercel.app';
+               'https://canisurf.today';
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: 'Can I Surf Today?',
+    default: 'Can I Surf Today? - St. Augustine, FL',
     template: '%s | Can I Surf Today?'
   },
   description: 'Real-time AI-powered surf report for St. Augustine, Florida. Get current wave conditions, wind data, and surf recommendations updated 4 times daily.',
@@ -33,14 +33,15 @@ export const metadata: Metadata = {
     'AI surf report',
     'surf conditions',
     'Vilano Beach',
-    'surf forecast AI'
+    'surf forecast AI',
+    'can I surf today'
   ],
   
   // Basic metadata
   applicationName: 'Can I Surf Today?',
-  authors: [{ name: 'Matt Whalley' }],
-  creator: 'Matt Whalley',
-  publisher: 'Can I Surf Today?',
+  authors: [{ name: 'Can I Surf Today' }],
+  creator: 'Can I Surf Today',
+  publisher: 'Can I Surf Today',
   formatDetection: {
     email: false,
     address: false,
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: baseUrl,
-    title: 'Can I Surf Today? St. Augustine, FL',
+    title: 'Can I Surf Today? - St. Augustine, FL',
     description: 'Real-time AI-powered surf conditions for St. Augustine, Florida. Current waves, wind, and surf recommendations.',
     siteName: 'Can I Surf Today?',
     images: [
@@ -60,7 +61,7 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Can I Surf Today? logo with wave graphics',
+        alt: 'Can I Surf Today? - St. Augustine surf conditions with wave and weather data',
         type: 'image/png',
       },
       {
@@ -76,10 +77,10 @@ export const metadata: Metadata = {
   // Twitter metadata
   twitter: {
     card: 'summary_large_image',
-    title: 'Can I Surf Today?',
-    description: 'St. Augustine Surf Report powered by real-time data and AI',
-    // site: '@surflab', // Replace with your Twitter handle if you have one
-    // creator: '@surflab',
+    title: 'Can I Surf Today? - St. Augustine, FL',
+    description: 'Real-time AI surf conditions for St. Augustine. Current waves, wind, and surf recommendations.',
+    site: '@canisurftoday', // Replace with your Twitter handle if you have one
+    creator: '@canisurftoday',
     images: [
       {
         url: '/twitter-image.png',
@@ -168,11 +169,11 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         
         {/* Canonical URL */}
-        <link rel="canonical" href={baseUrl} />
+        <link rel="canonical" href="/" />
         
         {/* Additional Open Graph tags for better social sharing */}
         <meta property="og:updated_time" content={new Date().toISOString()} />
-        <meta property="article:author" content="Can I Surf Today?" />
+        <meta property="article:author" content="Surf Lab" />
         <meta property="article:section" content="Weather" />
         <meta property="article:tag" content="surf,weather,forecast,Florida" />
         
@@ -184,8 +185,8 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               "name": "Can I Surf Today?",
-              "description": "Real-time AI-powered surf conditions for St. Augustine, Florida. Current waves, wind, and surf recommendations.",
-              "url": baseUrl,
+              "description": "Real-time AI-powered surf report for St. Augustine, Florida",
+              "url": "/",
               "applicationCategory": "WeatherApplication",
               "operatingSystem": "Any",
               "offers": {
@@ -195,7 +196,7 @@ export default function RootLayout({
               },
               "author": {
                 "@type": "Organization",
-                "name": "Can I Surf Today?"
+                "name": "Can I Surf Today"
               },
               "geo": {
                 "@type": "GeoCoordinates",

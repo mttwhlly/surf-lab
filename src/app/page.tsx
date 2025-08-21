@@ -1,84 +1,98 @@
-'use client';
+import { Metadata } from 'next';
+import { SurfAppClient } from './components/SurfAppClient';
 
-import Image from 'next/image';
-import { useSurfReportOptimized } from './hooks/useSurfReportOptimized';
-import { SurfReportCard } from './components/surf/SurfReportCard';
-import { ErrorCard } from './components/ui/ErrorCard';
-import { DataFlowDebug } from './components/debug/DataFlowDebug';
-import { PerformanceMonitor } from './components/debug/PerformanceMonitor';
+// Helper function to extract condition from AI report
+function extractConditionFromReport(report: string): string {
+  const conditionKeywords = {
+    'Epic': ['epic', 'firing', 'going off', 'pumping', 'cranking'],
+    'Good': ['good', 'solid', 'fun', 'decent', 'worth it'],
+    'Fair': ['fair', 'okay', 'marginal', 'questionable'],
+    'Poor': ['poor', 'flat', 'blown out', 'junk', 'small']
+  };
 
-export default function SurfApp() {
-  const { 
-    report: surfReport, 
-    loading: reportLoading, 
-    error: reportError,
-    dataFreshness,
-    reportAge,
-    isRefetching,
-    nextUpdateTime,
-    method,
-    connectionState,
-    debugInfo,
-    performanceMetrics
-  } = useSurfReportOptimized();
+  const reportLower = report.toLowerCase();
+  
+  for (const [condition, keywords] of Object.entries(conditionKeywords)) {
+    if (keywords.some(keyword => reportLower.includes(keyword))) {
+      return condition;
+    }
+  }
+  
+  return 'Current'; // Default fallback
+}
 
-  return (
-    <div className='flex flex-col items-center justify-start min-h-screen mb-12'>
-      {/* Top Controls */}
-      <div className="mt-8">
-        <Image 
-          src="/wave-logo.svg"
-          alt="Can I Surf Today Logo"
-          width={64}
-          height={64}
-          priority
-        />
-      </div>
+// Server-side function to fetch current surf report
+async function getCurrentSurfReport() {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
+                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                   'https://canisurf.today';
+    
+    const response = await fetch(`${baseUrl}/api/surf-report`, {
+      // Cache for 5 minutes to avoid excessive API calls during build
+      next: { revalidate: 300 },
+      headers: {
+        'User-Agent': 'SurfLab-Metadata-Generator/1.0'
+      }
+    });
+    
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (error) {
+    console.log('Could not fetch surf report for metadata:', error);
+  }
+  
+  return null;
+}
 
-      {/* Main Container */}
-      <div className="mt-8 px-4 pb-8 max-w-3xl w-full">
+// Generate dynamic metadata based on current surf conditions
+export async function generateMetadata(): Promise<Metadata> {
+  const surfReport = await getCurrentSurfReport();
+  
+  if (surfReport) {
+    const waveHeight = surfReport.conditions.wave_height_ft;
+    const condition = extractConditionFromReport(surfReport.report);
+    const windSpeed = Math.round(surfReport.conditions.wind_speed_kts);
+    const waterTemp = Math.round(surfReport.conditions.water_temperature_f || 72);
+    
+    const title = `${condition} Surf - ${waveHeight}ft waves | Can I Surf Today?`;
+    const description = `${condition} surf conditions in St. Augustine! ${waveHeight}ft waves, ${windSpeed}kt winds, ${waterTemp}°F water. Real-time surf report updated 4 times daily.`;
+    
+    // Dynamic OG image URL with current conditions
+    const ogImageUrl = `/api/og?height=${waveHeight}&condition=${encodeURIComponent(condition)}&wind=${windSpeed}&temp=${waterTemp}`;
+    
+    return {
+      title,
+      description,
+      openGraph: {
+        title: `${condition} Surf - ${waveHeight}ft waves | St. Augustine`,
+        description: `Current surf: ${condition} conditions with ${waveHeight}ft waves and ${windSpeed}kt winds in St. Augustine, FL`,
+        images: [
+          {
+            url: ogImageUrl,
+            width: 1200,
+            height: 630,
+            alt: `${condition} surf conditions - ${waveHeight}ft waves in St. Augustine`,
+          }
+        ],
+      },
+      twitter: {
+        title,
+        description,
+        images: [ogImageUrl],
+      },
+    };
+  }
+  
+  // Fallback to default metadata if no surf report available
+  return {
+    title: 'Can I Surf Today? - St. Augustine, FL',
+    description: 'Real-time AI-powered surf report for St. Augustine, Florida. Get current wave conditions, wind data, and surf recommendations updated 4 times daily.',
+  };
+}
 
-        {/* AI Surf Report */}
-        <SurfReportCard report={surfReport} loading={reportLoading} />
-
-        {/* Error Display */}
-        {reportError && (
-          <ErrorCard message={reportError} />
-        )}
-
-        {/* Performance Monitor & Debugger - Development Only */}
-        {process.env.NODE_ENV === 'development' && (
-          <>
-          <PerformanceMonitor
-            report={surfReport}
-            loading={reportLoading}
-            performanceMetrics={performanceMetrics}
-            dataFreshness={dataFreshness}
-            reportAge={reportAge}
-          />
-
-        {/* Debug Component - Shows data flow in development */}
-          <DataFlowDebug 
-            report={surfReport}
-            loading={reportLoading}
-            isRefetching={isRefetching}
-            dataFreshness={dataFreshness}
-            reportAge={reportAge}
-            nextUpdateTime={nextUpdateTime}
-            method={method}
-            connectionState={connectionState}
-            debugInfo={debugInfo}
-          />
-        </>
-      )}
-      </div>
-
-      <div className="mx-auto max-w-2xl w-full px-4 mt-6">
-        <pre className='text-sm text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl'>
-          <span className='mr-2 font-bold'>Heads up!</span>
-          This AI surf report uses real ocean and weather data, however, it can make mistakes so always check conditions yourself before paddling out.
-        </pre>
-      </div>
-    </div>
-  );
+// Server component that renders the client component
+export default function SurfPage() {
+  return <SurfAppClient />;
 }
