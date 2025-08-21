@@ -119,12 +119,15 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
     const surfData = await surfDataResponse.json();
     console.log('📊 Fresh surf data obtained:', {
       location: surfData.location,
-      waveHeight: surfData.details.wave_height_ft,
-      windSpeed: surfData.details.wind_speed_kts,
+      waveHeight: `${surfData.details.wave_height_ft}ft`,
+      wavePeriod: `${surfData.details.wave_period_sec}s`, 
+      swellDirection: `${surfData.details.swell_direction_deg}°`, 
+      windSpeed: `${surfData.details.wind_speed_kts}kts`,
+      windDirection: `${surfData.details.wind_direction_deg}°`, 
       score: surfData.score
     });
     
-    // STEP 3: CALL BUN AI SERVICE
+    // STEP 3: CALL BUN AI SERVICE WITH COMPLETE DATA
     console.log('🤖 Calling Bun AI service...');
     const aiStart = Date.now();
     
@@ -140,7 +143,7 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
         'User-Agent': 'SurfLab-Vercel/1.0'
       },
       body: JSON.stringify({
-        surfData,
+        surfData, 
         apiKey: process.env.BUN_API_SECRET
       }),
       signal: AbortSignal.timeout(30000) // 30 second timeout
@@ -185,38 +188,6 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
     console.error('❌ Fresh generation via Bun failed:', error);
     throw error;
   }
-}
-
-function calculateOptimalCacheExpiration(): string {
-  const now = new Date();
-  
-  // Convert to Eastern Time
-  const et = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-  const currentHour = et.getHours();
-  
-  // Cron jobs run at: 5, 9, 13, 16 (5AM, 9AM, 1PM, 4PM ET)
-  const cronHours = [5, 9, 13, 16];
-  
-  // Find next cron hour
-  let nextCronHour = cronHours.find(hour => hour > currentHour);
-  
-  const nextCron = new Date(et);
-  
-  if (nextCronHour) {
-    // Next cron is today
-    nextCron.setHours(nextCronHour, 0, 0, 0);
-  } else {
-    // Next cron is tomorrow at 5 AM
-    nextCron.setDate(nextCron.getDate() + 1);
-    nextCron.setHours(5, 0, 0, 0);
-  }
-  
-  // Add 30 minutes buffer after cron time for cache safety
-  nextCron.setMinutes(30);
-  
-  console.log(`⏰ Optimal cache: Next cron at ${nextCron.toLocaleString()}, caching until then`);
-  
-  return nextCron.toISOString();
 }
 
 export async function OPTIONS() {

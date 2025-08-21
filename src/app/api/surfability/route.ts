@@ -606,48 +606,49 @@ export async function GET(request: NextRequest) {
     
     const responseTime = Date.now() - startTime;
     
-    const response = {
-      location: 'St. Augustine, FL',
-      timestamp: new Date().toISOString(),
-      surfable,
-      rating: funRating,
-      score,
-      goodSurfDuration: "Based on real-time conditions",
-      dataQuality: 'real-time-verified',
-      details: {
-        wave_height_ft: Math.round(marineData.waveHeight * 10) / 10,
-        wave_period_sec: Math.round(marineData.wavePeriod * 10) / 10,
-        swell_direction_deg: Math.round(marineData.swellDirection),
-        wind_direction_deg: Math.round(windDirection),
-        wind_speed_kts: Math.round(windSpeed * 10) / 10,
-        tide_state: tideData.state,
-        tide_height_ft: Math.round(tideData.currentHeight * 10) / 10,
-        data_source: 'Real-time APIs (no estimates or fallbacks)'
-      },
-      weather: {
-        air_temperature_c: Math.round(weatherData.current.temperature_2m * 10) / 10,
-        air_temperature_f: Math.round((weatherData.current.temperature_2m * 9/5 + 32) * 10) / 10,
-        water_temperature_c: Math.round(marineData.waterTemp * 10) / 10,
-        water_temperature_f: Math.round((marineData.waterTemp * 9/5 + 32) * 10) / 10,
-        weather_code: weatherData.current.weather_code,
-        weather_description: weatherDescriptions[weatherData.current.weather_code] || 'Unknown conditions'
-      },
-      tides: {
-        current_height_ft: Math.round(tideData.currentHeight * 10) / 10,
-        state: tideData.state,
-        next_high: formatTideTime(tideData.nextHigh),
-        next_low: formatTideTime(tideData.nextLow),
-        previous_high: formatTideTime(tideData.previousHigh),
-        previous_low: formatTideTime(tideData.previousLow),
-        station: 'NOAA 8720587 (St. Augustine Beach, FL)'
-      },
-      // Debug info
-      _debug: {
-        responseTime: `${responseTime}ms`,
-        dataSourcesUsed: ['Open-Meteo Marine', 'NOAA Tides', 'Open-Meteo Weather'],
-        noFallbacksUsed: true
-      }
-    };
+  const response = {
+    location: 'St. Augustine, FL',
+    timestamp: new Date().toISOString(),
+    surfable,
+    rating: funRating,
+    score,
+    goodSurfDuration: "Based on real-time conditions",
+    dataQuality: 'real-time-verified',
+    details: {
+      wave_height_ft: Math.round(marineData.waveHeight * 10) / 10,
+      wave_period_sec: Math.round(marineData.wavePeriod * 10) / 10,
+      swell_direction_deg: Math.round(marineData.swellDirection),
+      wind_direction_deg: Math.round(windDirection),
+      wind_speed_kts: Math.round(windSpeed * 10) / 10,
+      tide_state: tideData.state,
+      tide_height_ft: Math.round(tideData.currentHeight * 10) / 10,
+      data_source: 'Real-time APIs (no estimates or fallbacks)'
+    },
+    weather: {
+      // ✅ FIXED: Round to whole numbers (no decimals for temps)
+      air_temperature_c: Math.round(weatherData.current.temperature_2m),
+      air_temperature_f: Math.round(weatherData.current.temperature_2m * 9/5 + 32),
+      water_temperature_c: Math.round(marineData.waterTemp),
+      water_temperature_f: Math.round(marineData.waterTemp * 9/5 + 32),
+      weather_code: weatherData.current.weather_code,
+      weather_description: weatherDescriptions[weatherData.current.weather_code] || 'Unknown conditions'
+    },
+    tides: {
+      current_height_ft: Math.round(tideData.currentHeight * 10) / 10,
+      state: tideData.state,
+      next_high: formatTideTime(tideData.nextHigh),
+      next_low: formatTideTime(tideData.nextLow),
+      previous_high: formatTideTime(tideData.previousHigh),
+      previous_low: formatTideTime(tideData.previousLow),
+      station: 'NOAA 8720587 (St. Augustine Beach, FL)'
+    },
+    // Debug info
+    _debug: {
+      responseTime: `${responseTime}ms`,
+      dataSourcesUsed: ['Open-Meteo Marine', 'NOAA Tides', 'Open-Meteo Weather'],
+      noFallbacksUsed: true
+    }
+  };
     
     return NextResponse.json(response);
     
