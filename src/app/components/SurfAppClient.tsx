@@ -5,8 +5,6 @@ import Image from 'next/image';
 import { useSurfReportOptimized } from '../hooks/useSurfReportOptimized';
 import { SurfReportCard } from './surf/SurfReportCard';
 import { ErrorCard } from './ui/ErrorCard';
-import { DataFlowDebug } from './debug/DataFlowDebug';
-import { PerformanceMonitor } from './debug/PerformanceMonitor';
 import { useEffect } from 'react';
 
 // Helper function to extract condition from AI report
@@ -89,30 +87,6 @@ export function SurfAppClient() {
           This AI surf report uses real ocean and weather data, however, it can make mistakes so always check conditions yourself before paddling out.
         </pre>
       </div>
-
-      {/* Debug Component - Shows data flow in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="max-w-2xl w-full px-4 pt-2">
-          <PerformanceMonitor
-            report={surfReport}
-            loading={reportLoading}
-            performanceMetrics={performanceMetrics}
-            dataFreshness={dataFreshness}
-            reportAge={reportAge}
-          />
-          <DataFlowDebug 
-            report={surfReport}
-            loading={reportLoading}
-            isRefetching={isRefetching}
-            dataFreshness={dataFreshness}
-            reportAge={reportAge}
-            nextUpdateTime={nextUpdateTime}
-            method={method}
-            connectionState={connectionState}
-            debugInfo={debugInfo}
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -49,6 +49,78 @@ const weatherDescriptions: { [key: number]: string } = {
   99: "Thunderstorm with heavy hail"
 };
 
+// Helper function to convert degrees to compass direction
+function degreesToCompass(degrees: number): string {
+  if (degrees < 0 || degrees > 360) {
+    degrees = ((degrees % 360) + 360) % 360; // Normalize to 0-360
+  }
+  
+  const directions = [
+    'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'
+  ];
+  
+  const index = Math.round(degrees / 22.5) % 16;
+  return directions[index];
+}
+
+// Helper function to get descriptive swell direction for St. Augustine
+function getSwellDirectionDescription(degrees: number): string {
+  const compass = degreesToCompass(degrees);
+  
+  // St. Augustine specific swell direction context
+  // Note: Directions are "FROM" (meteorological convention)
+  if (degrees >= 315 || degrees < 45) {
+    return `${compass} (North swell - from nor'easters or winter storms)`;
+  } else if (degrees >= 45 && degrees < 135) {
+    return `${compass} (Northeast/East swell - classic Atlantic conditions)`;
+  } else if (degrees >= 135 && degrees < 225) {
+    return `${compass} (South swell - from hurricanes or tropical systems)`;
+  } else {
+    return `${compass} (West swell - very rare, from Gulf or backside of storms)`;
+  }
+}
+
+// Helper function to get wind description for St. Augustine (east coast)
+function getWindDescription(windDirection: number, windSpeed: number): string {
+  const compass = degreesToCompass(windDirection);
+  
+  // St. Augustine faces east, so determine onshore vs offshore
+  // Offshore: 225° to 45° (SW through W to NW to N to NE)
+  // Onshore: 45° to 225° (NE through E to SE to S to SW)
+  
+  let windType: string;
+  let quality: string;
+  
+  if ((windDirection >= 225 && windDirection <= 360) || (windDirection >= 0 && windDirection <= 45)) {
+    // Offshore winds (from land toward ocean)
+    windType = 'offshore';
+    if (windSpeed < 5) {
+      quality = 'glassy conditions';
+    } else if (windSpeed < 15) {
+      quality = 'clean offshore conditions';
+    } else if (windSpeed < 25) {
+      quality = 'strong offshore - may be difficult to paddle';
+    } else {
+      quality = 'very strong offshore - challenging conditions';
+    }
+  } else {
+    // Onshore winds (from ocean toward land)  
+    windType = 'onshore';
+    if (windSpeed < 5) {
+      quality = 'light onshore - fairly clean';
+    } else if (windSpeed < 10) {
+      quality = 'moderate onshore - some chop';
+    } else if (windSpeed < 20) {
+      quality = 'strong onshore - choppy conditions';
+    } else {
+      quality = 'very strong onshore - blown out';
+    }
+  }
+  
+  return `${compass} ${windType} (${quality})`;
+}
+
 // Surf rating phrases
 const surfRatings = {
   excellent: ["Epic", "Firing", "Going Off", "Pumping", "Primo", "Cranking"],
@@ -239,7 +311,7 @@ function findCurrentMarineData(marineData: any) {
   console.log('🌊 Raw marine data extracted:', {
     waveHeight: `${waveHeight}m`,
     wavePeriod: `${wavePeriod}s`,
-    swellDirection: `${swellDirection}°`,
+    swellDirection: `${swellDirection}° (${degreesToCompass(swellDirection)})`,
     waterTempC: waterTemp,
     waterTempF: waterTemp ? (waterTemp * 9/5 + 32).toFixed(1) : 'null',
     timeIndex: closestIndex,
@@ -563,12 +635,17 @@ export async function GET(request: NextRequest) {
     const windSpeed = weatherData.current.wind_speed_10m * 0.539957; // Convert m/s to knots
     const windDirection = weatherData.current.wind_direction_10m;
     
+    // Get compass directions for both swell and wind
+    const swellCompass = degreesToCompass(marineData.swellDirection);
+    const windCompass = degreesToCompass(windDirection);
+    const windDescription = getWindDescription(windDirection, windSpeed);
+    
     console.log('📊 Final extracted conditions (ALL REAL DATA):', {
       waveHeight: `${marineData.waveHeight.toFixed(1)}ft`,
       wavePeriod: `${marineData.wavePeriod}s`,
-      swellDirection: `${marineData.swellDirection}°`,
+      swellDirection: `${marineData.swellDirection}° (${swellCompass})`,
       windSpeed: `${windSpeed.toFixed(1)}kts`,
-      windDirection: `${windDirection}°`,
+      windDirection: `${windDirection}° (${windDescription})`,
       tideState: tideData.state,
       tideHeight: `${tideData.currentHeight.toFixed(1)}ft`,
       waterTemp: `${marineData.waterTemp}°C (${(marineData.waterTemp * 9/5 + 32).toFixed(1)}°F)`
@@ -606,49 +683,54 @@ export async function GET(request: NextRequest) {
     
     const responseTime = Date.now() - startTime;
     
-  const response = {
-    location: 'St. Augustine, FL',
-    timestamp: new Date().toISOString(),
-    surfable,
-    rating: funRating,
-    score,
-    goodSurfDuration: "Based on real-time conditions",
-    dataQuality: 'real-time-verified',
-    details: {
-      wave_height_ft: Math.round(marineData.waveHeight * 10) / 10,
-      wave_period_sec: Math.round(marineData.wavePeriod * 10) / 10,
-      swell_direction_deg: Math.round(marineData.swellDirection),
-      wind_direction_deg: Math.round(windDirection),
-      wind_speed_kts: Math.round(windSpeed * 10) / 10,
-      tide_state: tideData.state,
-      tide_height_ft: Math.round(tideData.currentHeight * 10) / 10,
-      data_source: 'Real-time APIs (no estimates or fallbacks)'
-    },
-    weather: {
-      // ✅ FIXED: Round to whole numbers (no decimals for temps)
-      air_temperature_c: Math.round(weatherData.current.temperature_2m),
-      air_temperature_f: Math.round(weatherData.current.temperature_2m * 9/5 + 32),
-      water_temperature_c: Math.round(marineData.waterTemp),
-      water_temperature_f: Math.round(marineData.waterTemp * 9/5 + 32),
-      weather_code: weatherData.current.weather_code,
-      weather_description: weatherDescriptions[weatherData.current.weather_code] || 'Unknown conditions'
-    },
-    tides: {
-      current_height_ft: Math.round(tideData.currentHeight * 10) / 10,
-      state: tideData.state,
-      next_high: formatTideTime(tideData.nextHigh),
-      next_low: formatTideTime(tideData.nextLow),
-      previous_high: formatTideTime(tideData.previousHigh),
-      previous_low: formatTideTime(tideData.previousLow),
-      station: 'NOAA 8720587 (St. Augustine Beach, FL)'
-    },
-    // Debug info
-    _debug: {
-      responseTime: `${responseTime}ms`,
-      dataSourcesUsed: ['Open-Meteo Marine', 'NOAA Tides', 'Open-Meteo Weather'],
-      noFallbacksUsed: true
-    }
-  };
+    const response = {
+      location: 'St. Augustine, FL',
+      timestamp: new Date().toISOString(),
+      surfable,
+      rating: funRating,
+      score,
+      goodSurfDuration: "Based on real-time conditions",
+      dataQuality: 'real-time-verified',
+      details: {
+        wave_height_ft: Math.round(marineData.waveHeight * 10) / 10,
+        wave_period_sec: Math.round(marineData.wavePeriod * 10) / 10,
+        swell_direction_deg: Math.round(marineData.swellDirection),
+        swell_direction_compass: swellCompass, // 🆕 Added compass direction
+        swell_direction_text: `${swellCompass} swell (from ${swellCompass})`, // 🆕 Crystal clear
+        swell_direction_description: getSwellDirectionDescription(marineData.swellDirection), // 🆕 Added description
+        wind_direction_deg: Math.round(windDirection),
+        wind_direction_compass: windCompass, // 🆕 Added compass direction
+        wind_direction_text: `${windCompass} wind (from ${windCompass})`, // 🆕 Crystal clear  
+        wind_direction_description: windDescription, // 🆕 Added full description
+        wind_speed_kts: Math.round(windSpeed * 10) / 10,
+        tide_state: tideData.state,
+        tide_height_ft: Math.round(tideData.currentHeight * 10) / 10,
+        data_source: 'Real-time APIs (no estimates or fallbacks)'
+      },
+      weather: {
+        air_temperature_c: Math.round(weatherData.current.temperature_2m),
+        air_temperature_f: Math.round(weatherData.current.temperature_2m * 9/5 + 32),
+        water_temperature_c: Math.round(marineData.waterTemp),
+        water_temperature_f: Math.round(marineData.waterTemp * 9/5 + 32),
+        weather_code: weatherData.current.weather_code,
+        weather_description: weatherDescriptions[weatherData.current.weather_code] || 'Unknown conditions'
+      },
+      tides: {
+        current_height_ft: Math.round(tideData.currentHeight * 10) / 10,
+        state: tideData.state,
+        next_high: formatTideTime(tideData.nextHigh),
+        next_low: formatTideTime(tideData.nextLow),
+        previous_high: formatTideTime(tideData.previousHigh),
+        previous_low: formatTideTime(tideData.previousLow),
+        station: 'NOAA 8720587 (St. Augustine Beach, FL)'
+      },
+      // Debug info
+      _debug: {
+        responseTime: `${responseTime}ms`,
+        dataSourcesUsed: ['Open-Meteo Marine', 'NOAA Tides', 'Open-Meteo Weather'],
+        noFallbacksUsed: true
+      }
+    };
     
     return NextResponse.json(response);
     
