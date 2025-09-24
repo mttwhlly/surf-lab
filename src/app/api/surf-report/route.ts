@@ -121,9 +121,9 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
       location: surfData.location,
       waveHeight: `${surfData.details.wave_height_ft}ft`,
       wavePeriod: `${surfData.details.wave_period_sec}s`, 
-      swellDirection: `${surfData.details.swell_direction_deg}°`, 
+      swellDirection: `${surfData.details.swell_direction_deg}° (${surfData.details.swell_direction_compass})`, // ✅ Now includes compass
       windSpeed: `${surfData.details.wind_speed_kts}kts`,
-      windDirection: `${surfData.details.wind_direction_deg}°`, 
+      windDirection: `${surfData.details.wind_direction_deg}° (${surfData.details.wind_direction_compass})`, // ✅ Now includes compass
       score: surfData.score
     });
     
@@ -164,23 +164,44 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
 
     const report = aiResult.report;
 
+    // 🚨 FIX: PRESERVE COMPASS DIRECTIONS FROM SURFABILITY API
+    // Update the report conditions to include compass directions
+    report.conditions = {
+      ...report.conditions,
+      // Add the missing compass directions from surfData
+      swell_direction_deg: surfData.details.swell_direction_deg,
+      swell_direction_compass: surfData.details.swell_direction_compass,
+      swell_direction_text: surfData.details.swell_direction_text,
+      swell_direction_description: surfData.details.swell_direction_description,
+      wind_direction_compass: surfData.details.wind_direction_compass,
+      wind_direction_text: surfData.details.wind_direction_text,
+      wind_direction_description: surfData.details.wind_direction_description,
+      // Also add tide height and water temperature
+      tide_height_ft: surfData.details.tide_height_ft,
+      water_temperature_c: surfData.weather.water_temperature_c,
+      water_temperature_f: surfData.weather.water_temperature_f,
+      air_temperature_c: surfData.weather.air_temperature_c,
+      air_temperature_f: surfData.weather.air_temperature_f
+    };
+
     // Save to database
     await saveReport(report);
-    console.log('✅ Report saved to database:', report.id);
+    console.log('✅ Report saved to database with compass directions:', report.id);
     
     const totalTime = Date.now() - startTime;
     console.log(`⚡ Total generation time: ${totalTime}ms`);
     
     return NextResponse.json(report, {
       headers: {
-        'X-Data-Source': 'bun-ai-service',
+        'X-Data-Source': 'bun-ai-service-with-compass',
         'X-Cache-Status': 'miss',
         'X-Response-Time': `${totalTime}ms`,
         'X-Surf-Data-Time': `${surfDataTime}ms`,
         'X-AI-Generation-Time': `${aiTime}ms`,
         'X-Cache-Valid-Until': report.cached_until,
         'X-API-Calls-Made': '2',
-        'X-AI-Backend': 'bun-service'
+        'X-AI-Backend': 'bun-service',
+        'X-Compass-Data': 'preserved'
       }
     });
 
