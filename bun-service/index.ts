@@ -1,6 +1,6 @@
 import { serve } from "bun"
 import { generateObject } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
 const surfReportSchema = z.object({
@@ -187,7 +187,7 @@ async function generateDetailedSurfReport(surfData: any) {
     const prompt = createDetailedSurfPrompt(surfData)
 
     const { object: aiResponse } = await generateObject({
-      model: openai('gpt-4o-mini'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       schema: surfReportSchema,
       prompt,
       temperature: 0.6,
@@ -237,7 +237,7 @@ async function generateDetailedSurfReport(surfData: any) {
       cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
       generation_meta: {
         backend: 'bun-enhanced-with-compass',
-        model: 'gpt-4o-mini',
+        model: 'claude-haiku-4-5-20251001',
         report_length: fullReport.length,
         word_count: fullReport.split(' ').length,
         paragraphs: 2,
