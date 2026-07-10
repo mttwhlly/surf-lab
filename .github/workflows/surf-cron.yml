@@ -1,0 +1,32 @@
+name: Surf Report Cron
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 5:00 AM ET
+    - cron: '0 13 * * *'  # 9:00 AM ET
+    - cron: '0 17 * * *'  # 1:00 PM ET
+    - cron: '0 20 * * *'  # 4:00 PM ET
+  workflow_dispatch:       # allow manual trigger from Actions tab
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate surf report
+        run: |
+          RESPONSE_FILE=$(mktemp)
+
+          HTTP_CODE=$(curl -s -w "%{http_code}" \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 5 \
+            -H "Content-Type: application/json" \
+            -X POST "${{ secrets.BUN_SERVICE_URL }}/cron/generate-fresh-report" \
+            -d "{\"cronSecret\": \"${{ secrets.CRON_SECRET }}\", \"vercelUrl\": \"${{ secrets.VERCEL_URL }}\"}" \
+            -o "$RESPONSE_FILE")
+
+          echo "HTTP Response: $HTTP_CODE"
+          cat "$RESPONSE_FILE" | python3 -m json.tool 2>/dev/null || cat "$RESPONSE_FILE"
+
+          [ "$HTTP_CODE" = "200" ] || exit 1
