@@ -6,6 +6,7 @@ import { useSurfReportOptimized } from '../hooks/useSurfReportOptimized';
 import { SurfReportCard } from './surf/SurfReportCard';
 import { ErrorCard } from './ui/ErrorCard';
 import { useEffect } from 'react';
+import { SurfReport } from '../types/surf-report';
 
 // Helper function to extract condition from AI report
 function extractConditionFromReport(report: string): string {
@@ -27,10 +28,14 @@ function extractConditionFromReport(report: string): string {
   return 'Current'; // Default fallback
 }
 
-export function SurfAppClient() {
-  const { 
-    report: surfReport, 
-    loading: reportLoading, 
+interface Props {
+  initialReport?: SurfReport | null;
+}
+
+export function SurfAppClient({ initialReport }: Props = {}) {
+  const {
+    report: surfReport,
+    loading: reportLoading,
     error: reportError,
     dataFreshness,
     reportAge,
@@ -40,7 +45,7 @@ export function SurfAppClient() {
     connectionState,
     debugInfo,
     performanceMetrics
-  } = useSurfReportOptimized();
+  } = useSurfReportOptimized({ initialData: initialReport });
 
   // Update document title when report changes
   useEffect(() => {

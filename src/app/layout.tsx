@@ -158,13 +158,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${lacquer.className} antialiased`}>
       <head>
-        {/* Additional meta tags for better caching and performance */}
-        <meta httpEquiv="Cache-Control" content="public, max-age=300, stale-while-revalidate=600" />
-        
-        {/* Preconnect to external domains for better performance */}
-        <link rel="preconnect" href="https://api.open-meteo.com" />
-        <link rel="preconnect" href="https://api.tidesandcurrents.noaa.gov" />
-        
         {/* DNS prefetch for fonts */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         

@@ -3,7 +3,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { SurfReport } from '../types/surf-report';
 
-export function useSurfReportOptimized() {
+interface Options {
+  initialData?: SurfReport | null;
+}
+
+export function useSurfReportOptimized({ initialData }: Options = {}) {
   const {
     data: report,
     isLoading,
@@ -54,8 +58,12 @@ export function useSurfReportOptimized() {
     retry: 1,                          // Only retry once
     retryDelay: 2000,                  // Quick retry
     
-    // ALWAYS FETCH ON MOUNT FOR FRESH DATA
-    refetchOnMount: 'always',
+    refetchOnMount: true,
+
+    initialData: initialData ?? undefined,
+    initialDataUpdatedAt: initialData?.timestamp
+      ? new Date(initialData.timestamp).getTime()
+      : undefined,
     
     // NETWORK SETTINGS
     networkMode: 'online',

@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { config } from 'dotenv';
+import type { SurfReport } from '../types/surf-report';
 
 // Load environment variables in development
 if (process.env.NODE_ENV !== 'production') {
@@ -24,28 +25,12 @@ const sql = neon(databaseUrl, {
   fullResults: false,
 });
 
-export interface SurfReport {
-  id: string;
-  timestamp: string;
-  location: string;
-  report: string;
-  conditions: {
-    wave_height_ft: number;
-    wave_period_sec: number;
-    wind_speed_kts: number;
-    wind_direction_deg: number;
-    tide_state: string;
-    weather_description: string;
-    surfability_score: number;
-  };
-  recommendations: {
-    board_type: string;
-    wetsuit_thickness?: string;
-    skill_level: 'beginner' | 'intermediate' | 'advanced';
-    best_spots?: string[];
-    timing_advice?: string;
-  };
-  cached_until: string;
+export type { SurfReport };
+
+let initPromise: Promise<void> | null = null;
+export function ensureInitialized(): Promise<void> {
+  if (!initPromise) initPromise = initializeDatabase();
+  return initPromise;
 }
 
 // Initialize database with optimized indexes

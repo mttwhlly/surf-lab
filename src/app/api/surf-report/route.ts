@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedReport, saveReport, initializeDatabase } from '@/lib/db';
+import { getCachedReport, saveReport, ensureInitialized } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -123,8 +123,7 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
   console.log('🚨 FRESH GENERATION VIA BUN SERVICE...');
   
   try {
-    // Initialize database
-    await initializeDatabase();
+    await ensureInitialized();
     
     // Get base URL for internal API calls  
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 

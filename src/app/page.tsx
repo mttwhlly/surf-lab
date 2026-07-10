@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { SurfAppClient } from './components/SurfAppClient';
+import { getCachedReport } from '@/lib/db';
 
 // Helper function to extract condition from AI report
 function extractConditionFromReport(report: string): string {
@@ -21,29 +22,13 @@ function extractConditionFromReport(report: string): string {
   return 'Current'; // Default fallback
 }
 
-// Server-side function to fetch current surf report
 async function getCurrentSurfReport() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
-                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'https://canisurf.today';
-    
-    const response = await fetch(`${baseUrl}/api/surf-report`, {
-      // Cache for 5 minutes to avoid excessive API calls during build
-      next: { revalidate: 300 },
-      headers: {
-        'User-Agent': 'SurfLab-Metadata-Generator/1.0'
-      }
-    });
-    
-    if (response.ok) {
-      return await response.json();
-    }
+    return await getCachedReport();
   } catch (error) {
     console.log('Could not fetch surf report for metadata:', error);
+    return null;
   }
-  
-  return null;
 }
 
 // Generate dynamic metadata based on current surf conditions
@@ -92,7 +77,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// Server component that renders the client component
-export default function SurfPage() {
-  return <SurfAppClient />;
+export default async function SurfPage() {
+  const initialReport = await getCurrentSurfReport();
+  return <SurfAppClient initialReport={initialReport} />;
 }
