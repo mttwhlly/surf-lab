@@ -26,6 +26,7 @@
     "clsx": "^2.0.0",
     "dotenv": "^17.2.0",
     "lucide-react": "^0.263.1",
+    "motion": "^12.42.2",
     "next": "14.0.0",
     "react": "link:@vercel/analytics/react",
     "react-dom": "^18",
