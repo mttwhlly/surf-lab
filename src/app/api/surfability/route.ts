@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getLocation, DEFAULT_LOCATION_SLUG, type Location } from '@/lib/locations';
+
+export const dynamic = 'force-dynamic';
 
 // Types
 interface SurfData {
@@ -9,13 +12,6 @@ interface SurfData {
   windSpeed: number;
   tide: string;
   tideHeight?: number;
-}
-
-interface WeatherData {
-  airTemperature: number;
-  waterTemperature: number;
-  weatherCode: number;
-  weatherDescription: string;
 }
 
 interface TideData {
@@ -49,76 +45,60 @@ const weatherDescriptions: { [key: number]: string } = {
   99: "Thunderstorm with heavy hail"
 };
 
-// Helper function to convert degrees to compass direction
 function degreesToCompass(degrees: number): string {
   if (degrees < 0 || degrees > 360) {
-    degrees = ((degrees % 360) + 360) % 360; // Normalize to 0-360
+    degrees = ((degrees % 360) + 360) % 360;
   }
-  
   const directions = [
     'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
     'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'
   ];
-  
   const index = Math.round(degrees / 22.5) % 16;
   return directions[index];
 }
 
-// Helper function to get descriptive swell direction for St. Augustine
-function getSwellDirectionDescription(degrees: number): string {
-  const compass = degreesToCompass(degrees);
-  
-  // St. Augustine specific swell direction context
-  // Note: Directions are "FROM" (meteorological convention)
-  if (degrees >= 315 || degrees < 45) {
-    return `${compass} (North swell - from nor'easters or winter storms)`;
-  } else if (degrees >= 45 && degrees < 135) {
-    return `${compass} (Northeast/East swell - classic Atlantic conditions)`;
-  } else if (degrees >= 135 && degrees < 225) {
-    return `${compass} (South swell - from hurricanes or tropical systems)`;
-  } else {
-    return `${compass} (West swell - very rare, from Gulf or backside of storms)`;
-  }
+// Generic: is wind offshore for this coast orientation?
+function isOffshoreWind(windDirection: number, coastFacingDeg: number): boolean {
+  const offshoreCenter = (coastFacingDeg + 180) % 360;
+  let diff = Math.abs(windDirection - offshoreCenter);
+  if (diff > 180) diff = 360 - diff;
+  return diff <= 90;
 }
 
-// Helper function to get wind description for St. Augustine (east coast)
-function getWindDescription(windDirection: number, windSpeed: number): string {
+function getWindDescription(windDirection: number, windSpeed: number, coastFacingDeg: number): string {
   const compass = degreesToCompass(windDirection);
-  
-  // St. Augustine faces east, so determine onshore vs offshore
-  // Offshore: 225° to 45° (SW through W to NW to N to NE)
-  // Onshore: 45° to 225° (NE through E to SE to S to SW)
-  
-  let windType: string;
+  const offshore = isOffshoreWind(windDirection, coastFacingDeg);
+  const windType = offshore ? 'offshore' : 'onshore';
+
   let quality: string;
-  
-  if ((windDirection >= 225 && windDirection <= 360) || (windDirection >= 0 && windDirection <= 45)) {
-    // Offshore winds (from land toward ocean)
-    windType = 'offshore';
-    if (windSpeed < 5) {
-      quality = 'glassy conditions';
-    } else if (windSpeed < 15) {
-      quality = 'clean offshore conditions';
-    } else if (windSpeed < 25) {
-      quality = 'strong offshore - may be difficult to paddle';
-    } else {
-      quality = 'very strong offshore - challenging conditions';
-    }
+  if (offshore) {
+    if (windSpeed < 5) quality = 'glassy conditions';
+    else if (windSpeed < 15) quality = 'clean offshore conditions';
+    else if (windSpeed < 25) quality = 'strong offshore - may be difficult to paddle out';
+    else quality = 'very strong offshore - challenging conditions';
   } else {
-    // Onshore winds (from ocean toward land)  
-    windType = 'onshore';
-    if (windSpeed < 5) {
-      quality = 'light onshore - fairly clean';
-    } else if (windSpeed < 10) {
-      quality = 'moderate onshore - some chop';
-    } else if (windSpeed < 20) {
-      quality = 'strong onshore - choppy conditions';
-    } else {
-      quality = 'very strong onshore - blown out';
-    }
+    if (windSpeed < 5) quality = 'light onshore - fairly clean';
+    else if (windSpeed < 10) quality = 'moderate onshore - some chop';
+    else if (windSpeed < 20) quality = 'strong onshore - choppy conditions';
+    else quality = 'very strong onshore - blown out';
   }
-  
+
   return `${compass} ${windType} (${quality})`;
+}
+
+// Is this swell direction favorable for the coast orientation?
+function getSwellDirectionDescription(degrees: number, coastFacingDeg: number): string {
+  const compass = degreesToCompass(degrees);
+  let diff = Math.abs(degrees - coastFacingDeg);
+  if (diff > 180) diff = 360 - diff;
+
+  let assessment: string;
+  if (diff <= 45) assessment = 'direct, favorable swell angle';
+  else if (diff <= 90) assessment = 'oblique but workable swell angle';
+  else if (diff <= 135) assessment = 'cross-swell — limited power';
+  else assessment = 'backside swell — unfavorable';
+
+  return `${compass} (${assessment})`;
 }
 
 // Surf rating phrases
@@ -136,54 +116,32 @@ function getRandomRating(category: keyof typeof surfRatings): string {
 
 function calculateSurfability(data: SurfData) {
   let score = 0;
-  
-  // Wave height scoring
-  if (data.waveHeight >= 2 && data.waveHeight <= 8) {
-    score += 25;
-  } else if (data.waveHeight >= 1.5 && data.waveHeight < 2) {
-    score += 15;
-  }
-  
-  // Wave period scoring
-  if (data.wavePeriod >= 10) {
-    score += 25;
-  } else if (data.wavePeriod >= 7) {
-    score += 20;
-  } else if (data.wavePeriod >= 5) {
-    score += 10;
-  }
-  
-  // Swell direction scoring
-  if (data.swellDirection >= 45 && data.swellDirection <= 135) {
-    score += 20;
-  } else if (data.swellDirection >= 30 && data.swellDirection <= 150) {
-    score += 10;
-  }
-  
-  // Wind scoring
-  if (data.windSpeed < 5) {
-    score += 15;
-  } else if (data.windDirection >= 225 && data.windDirection <= 315) {
+
+  if (data.waveHeight >= 2 && data.waveHeight <= 8) score += 25;
+  else if (data.waveHeight >= 1.5 && data.waveHeight < 2) score += 15;
+
+  if (data.wavePeriod >= 10) score += 25;
+  else if (data.wavePeriod >= 7) score += 20;
+  else if (data.wavePeriod >= 5) score += 10;
+
+  if (data.swellDirection >= 45 && data.swellDirection <= 135) score += 20;
+  else if (data.swellDirection >= 30 && data.swellDirection <= 150) score += 10;
+
+  if (data.windSpeed < 5) score += 15;
+  else if (data.windDirection >= 225 && data.windDirection <= 315) {
     if (data.windSpeed <= 15) score += 20;
     else score += 10;
-  } else if (data.windSpeed < 10) {
-    score += 10;
-  }
-  
-  // Tide scoring
-  if (data.tide === 'Mid' || data.tide === 'Rising' || data.tide === 'Falling') {
-    score += 10;
-  }
-  
+  } else if (data.windSpeed < 10) score += 10;
+
+  if (data.tide === 'Mid' || data.tide === 'Rising' || data.tide === 'Falling') score += 10;
+
   if (data.tideHeight !== undefined) {
-    if (data.tideHeight >= 0.5 && data.tideHeight <= 2.5) {
-      score += 5;
-    }
+    if (data.tideHeight >= 0.5 && data.tideHeight <= 2.5) score += 5;
   }
 
   let rating: string;
   let funRating: string;
-  
+
   if (score >= 80) {
     rating = 'Excellent';
     funRating = getRandomRating('excellent');
@@ -198,15 +156,9 @@ function calculateSurfability(data: SurfData) {
     funRating = getRandomRating('poor');
   }
 
-  return {
-    score,
-    surfable: score >= 45,
-    rating,
-    funRating,
-  };
+  return { score, surfable: score >= 45, rating, funRating };
 }
 
-// Fixed tide state calculation function
 function calculateTideState(
   currentHeight: number,
   nextHigh: { time: string; height: number; timestamp: string } | null,
@@ -215,337 +167,183 @@ function calculateTideState(
   previousLow: { time: string; height: number; timestamp: string } | null
 ): string {
   const now = new Date();
-  
-  // Convert timestamps to Date objects for comparison
   const nextHighTime = nextHigh ? new Date(nextHigh.timestamp) : null;
   const nextLowTime = nextLow ? new Date(nextLow.timestamp) : null;
-  
-  // Determine what comes next: high or low tide
-  let timeToNextHigh = nextHighTime ? nextHighTime.getTime() - now.getTime() : Infinity;
-  let timeToNextLow = nextLowTime ? nextLowTime.getTime() - now.getTime() : Infinity;
-  
-  // If we have both, see which is sooner
+  const timeToNextHigh = nextHighTime ? nextHighTime.getTime() - now.getTime() : Infinity;
+  const timeToNextLow = nextLowTime ? nextLowTime.getTime() - now.getTime() : Infinity;
+
   if (nextHighTime && nextLowTime) {
     if (timeToNextHigh < timeToNextLow) {
-      // Next event is HIGH tide - we're currently RISING
       const range = nextHigh && previousLow ? Math.abs(nextHigh.height - previousLow.height) : 3;
       const midPoint = nextHigh && previousLow ? (nextHigh.height + previousLow.height) / 2 : currentHeight;
-      
-      if (Math.abs(currentHeight - midPoint) < range * 0.25) {
-        return 'Mid Rising';
-      } else if (currentHeight < midPoint) {
-        return 'Low Rising';
-      } else {
-        return 'High Rising';
-      }
+      if (Math.abs(currentHeight - midPoint) < range * 0.25) return 'Mid Rising';
+      if (currentHeight < midPoint) return 'Low Rising';
+      return 'High Rising';
     } else {
-      // Next event is LOW tide - we're currently FALLING
       const range = previousHigh && nextLow ? Math.abs(previousHigh.height - nextLow.height) : 3;
       const midPoint = previousHigh && nextLow ? (previousHigh.height + nextLow.height) / 2 : currentHeight;
-      
-      if (Math.abs(currentHeight - midPoint) < range * 0.25) {
-        return 'Mid Falling';
-      } else if (currentHeight > midPoint) {
-        return 'High Falling';
-      } else {
-        return 'Low Falling';
-      }
+      if (Math.abs(currentHeight - midPoint) < range * 0.25) return 'Mid Falling';
+      if (currentHeight > midPoint) return 'High Falling';
+      return 'Low Falling';
     }
   }
-  
-  // Fallback logic if we only have one tide prediction
-  if (nextHighTime && timeToNextHigh < 6 * 60 * 60 * 1000) { // Within 6 hours
+
+  if (nextHighTime && timeToNextHigh < 6 * 60 * 60 * 1000) {
     return currentHeight > 1.5 ? 'High Rising' : 'Rising';
-  } else if (nextLowTime && timeToNextLow < 6 * 60 * 60 * 1000) { // Within 6 hours
+  } else if (nextLowTime && timeToNextLow < 6 * 60 * 60 * 1000) {
     return currentHeight < 1.0 ? 'Low Falling' : 'Falling';
   }
-  
-  // Final fallback
+
   return currentHeight > 2.0 ? 'High' : currentHeight < 1.0 ? 'Low' : 'Mid';
 }
 
-// FIXED: Function to find the closest current data from hourly arrays
 function findCurrentMarineData(marineData: any) {
   console.log('🔍 Processing marine data...');
-  
+
   if (!marineData?.hourly?.time) {
-    console.log('❌ No marine data available - missing hourly.time');
     throw new Error('No marine data available');
   }
 
   const now = new Date();
   const times = marineData.hourly.time;
-  
-  console.log('🔍 Marine data available:', {
-    totalHours: times.length,
-    timeRange: `${times[0]} to ${times[times.length - 1]}`,
-    hasWaveHeight: !!marineData.hourly.wave_height,
-    hasWavePeriod: !!marineData.hourly.wave_period,
-    hasSwellDirection: !!marineData.hourly.swell_wave_direction,
-    hasSeaTemp: !!marineData.hourly.sea_surface_temperature
-  });
-  
-  // Find the closest time index (either current hour or next available)
+
   let closestIndex = 0;
   let smallestDiff = Infinity;
-  
+
   for (let i = 0; i < times.length; i++) {
-    const time = new Date(times[i]);
-    const diff = Math.abs(time.getTime() - now.getTime());
-    
+    const diff = Math.abs(new Date(times[i]).getTime() - now.getTime());
     if (diff < smallestDiff) {
       smallestDiff = diff;
       closestIndex = i;
     }
   }
 
-  const closestTime = new Date(times[closestIndex]);
-  console.log(`🕐 Using marine data from: ${closestTime.toLocaleString()} (index ${closestIndex})`);
-  
-  // Extract data from the closest time index
-  const waveHeight = marineData.hourly.wave_height?.[closestIndex]; // meters
-  const wavePeriod = marineData.hourly.wave_period?.[closestIndex]; // seconds
-  const swellDirection = marineData.hourly.swell_wave_direction?.[closestIndex]; // degrees
-  const waterTemp = marineData.hourly.sea_surface_temperature?.[closestIndex]; // celsius
-  
-  console.log('🌊 Raw marine data extracted:', {
-    waveHeight: `${waveHeight}m`,
-    wavePeriod: `${wavePeriod}s`,
-    swellDirection: `${swellDirection}° (${degreesToCompass(swellDirection)})`,
-    waterTempC: waterTemp,
-    waterTempF: waterTemp ? (waterTemp * 9/5 + 32).toFixed(1) : 'null',
-    timeIndex: closestIndex,
-    totalDataPoints: times.length
-  });
+  const waveHeight = marineData.hourly.wave_height?.[closestIndex];
+  const wavePeriod = marineData.hourly.wave_period?.[closestIndex];
+  const swellDirection = marineData.hourly.swell_wave_direction?.[closestIndex];
+  const waterTemp = marineData.hourly.sea_surface_temperature?.[closestIndex];
 
-  // STRICT VALIDATION - No fallbacks, real data only
-  if (waveHeight === null || waveHeight === undefined || isNaN(waveHeight)) {
-    throw new Error(`Invalid wave height: ${waveHeight}`);
-  }
-  if (wavePeriod === null || wavePeriod === undefined || isNaN(wavePeriod)) {
-    throw new Error(`Invalid wave period: ${wavePeriod}`);
-  }
-  if (swellDirection === null || swellDirection === undefined || isNaN(swellDirection)) {
-    throw new Error(`Invalid swell direction: ${swellDirection}`);
-  }
-  if (waterTemp === null || waterTemp === undefined || isNaN(waterTemp)) {
-    throw new Error(`Invalid water temperature: ${waterTemp}`);
-  }
-
-  // Reasonable bounds check
-  if (waveHeight < 0 || waveHeight > 30) {
-    throw new Error(`Wave height ${waveHeight}m outside reasonable bounds`);
-  }
-  if (wavePeriod < 2 || wavePeriod > 25) {
-    throw new Error(`Wave period ${wavePeriod}s outside reasonable bounds`);
-  }
-  if (swellDirection < 0 || swellDirection > 360) {
-    throw new Error(`Swell direction ${swellDirection}° outside reasonable bounds`);
-  }
-  if (waterTemp < -5 || waterTemp > 40) {
-    throw new Error(`Water temperature ${waterTemp}°C outside reasonable bounds`);
-  }
-
-  console.log('✅ Marine data validation passed');
+  if (waveHeight === null || waveHeight === undefined || isNaN(waveHeight)) throw new Error(`Invalid wave height: ${waveHeight}`);
+  if (wavePeriod === null || wavePeriod === undefined || isNaN(wavePeriod)) throw new Error(`Invalid wave period: ${wavePeriod}`);
+  if (swellDirection === null || swellDirection === undefined || isNaN(swellDirection)) throw new Error(`Invalid swell direction: ${swellDirection}`);
+  if (waterTemp === null || waterTemp === undefined || isNaN(waterTemp)) throw new Error(`Invalid water temperature: ${waterTemp}`);
+  if (waveHeight < 0 || waveHeight > 30) throw new Error(`Wave height ${waveHeight}m outside reasonable bounds`);
+  if (wavePeriod < 2 || wavePeriod > 25) throw new Error(`Wave period ${wavePeriod}s outside reasonable bounds`);
+  if (waterTemp < -5 || waterTemp > 40) throw new Error(`Water temperature ${waterTemp}°C outside reasonable bounds`);
 
   return {
-    waveHeight: waveHeight * 3.28084, // Convert to feet
+    waveHeight: waveHeight * 3.28084,
     wavePeriod,
     swellDirection,
     waterTemp
   };
 }
 
-// FIXED: Fetch marine data with proper error handling and no fallbacks
-async function fetchMarineData(): Promise<{ waveHeight: number; wavePeriod: number; swellDirection: number; waterTemp: number }> {
-  console.log('🌊 Starting fetchMarineData() - real data only...');
-  
-  // Primary source: Open-Meteo Marine API (FIXED URL)
-  try {
-    console.log('🔄 Trying Open-Meteo Marine API...');
-    const marineRes = await fetch(
-      'https://api.open-meteo.com/v1/marine?latitude=29.9&longitude=-81.3&hourly=wave_height,wave_period,swell_wave_direction,sea_surface_temperature&timezone=America/New_York',
-      { signal: AbortSignal.timeout(12000) }
-    );
-    
-    console.log(`🌊 Marine API response: ${marineRes.status} ${marineRes.statusText}`);
-    
-    if (marineRes.ok) {
-      const marineData = await marineRes.json();
-      console.log('✅ Open-Meteo Marine API response received');
-      
-      const result = findCurrentMarineData(marineData);
-      console.log('✅ Successfully extracted marine data from Open-Meteo');
-      return result;
-    } else {
-      console.log(`❌ Open-Meteo Marine API failed: ${marineRes.status} ${marineRes.statusText}`);
-    }
-  } catch (error) {
-    console.log('❌ Open-Meteo Marine API error:', error);
-  }
+async function fetchMarineData(lat: number, lon: number, timezone: string) {
+  const params = `latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,swell_wave_direction,sea_surface_temperature&timezone=${encodeURIComponent(timezone)}`;
 
-  // Secondary source: Alternative Open-Meteo endpoint
   try {
-    console.log('🔄 Trying alternative marine API...');
-    const altRes = await fetch(
-      'https://marine-api.open-meteo.com/v1/marine?latitude=29.9&longitude=-81.3&hourly=wave_height,wave_period,swell_wave_direction,sea_surface_temperature&timezone=America/New_York',
-      { signal: AbortSignal.timeout(12000) }
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/marine?${params}`,
+      { cache: 'no-store', signal: AbortSignal.timeout(12000) }
     );
-    
-    console.log(`🌊 Alternative marine API response: ${altRes.status} ${altRes.statusText}`);
-    
-    if (altRes.ok) {
-      const altData = await altRes.json();
-      console.log('✅ Alternative marine API response received');
-      
-      const result = findCurrentMarineData(altData);
-      console.log('✅ Successfully extracted marine data from alternative endpoint');
-      return result;
-    } else {
-      console.log(`❌ Alternative marine API failed: ${altRes.status} ${altRes.statusText}`);
-    }
-  } catch (error) {
-    console.log('❌ Alternative marine API error:', error);
-  }
+    if (res.ok) return findCurrentMarineData(await res.json());
+  } catch (_) {}
 
-  // ALL MARINE APIS FAILED - No fallbacks, throw error
-  console.log('🚨 ALL MARINE APIS FAILED - No real data available');
+  try {
+    const res = await fetch(
+      `https://marine-api.open-meteo.com/v1/marine?${params}`,
+      { cache: 'no-store', signal: AbortSignal.timeout(12000) }
+    );
+    if (res.ok) return findCurrentMarineData(await res.json());
+  } catch (_) {}
+
   throw new Error('All marine data sources failed - no real ocean data available');
 }
 
-async function fetchTideData(): Promise<TideData> {
+async function fetchTideData(stationId: string): Promise<TideData> {
   try {
-    const stationId = '8720587'; // St. Augustine Beach, FL
-    
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const formatDate = (date: Date) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}${month}${day}`;
     };
-    
+
     const currentUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=${stationId}&product=water_level&datum=MLLW&time_zone=lst_ldt&units=english&application=SurfLab&format=json`;
     const predictionsUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${formatDate(yesterday)}&end_date=${formatDate(tomorrow)}&station=${stationId}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=SurfLab&format=json`;
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
-    
+
     const [currentRes, predictionsRes] = await Promise.all([
-      fetch(currentUrl, { signal: controller.signal }),
-      fetch(predictionsUrl, { signal: controller.signal })
+      fetch(currentUrl, { cache: 'no-store', signal: controller.signal }),
+      fetch(predictionsUrl, { cache: 'no-store', signal: controller.signal })
     ]);
-    
+
     clearTimeout(timeoutId);
-    
+
     let currentHeight = 0;
     let nextHigh: { time: string; height: number; timestamp: string } | null = null;
     let nextLow: { time: string; height: number; timestamp: string } | null = null;
     let previousHigh: { time: string; height: number; timestamp: string } | null = null;
     let previousLow: { time: string; height: number; timestamp: string } | null = null;
-    
-    // Parse current height
+
     if (currentRes.ok) {
       const currentData = await currentRes.json();
-      if (currentData.data && currentData.data.length > 0) {
+      if (currentData.data?.length > 0) {
         currentHeight = parseFloat(currentData.data[0].v);
       }
     }
-    
-    // Parse predictions
+
     if (predictionsRes.ok) {
       const predictionsData = await predictionsRes.json();
-      if (predictionsData.predictions && predictionsData.predictions.length > 0) {
+      if (predictionsData.predictions?.length > 0) {
         const now = new Date();
-        
         const allPredictions = predictionsData.predictions.map((p: any) => ({
           ...p,
           time: new Date(p.t),
           parsedHeight: parseFloat(p.v),
-          timestamp: p.t // Keep original timestamp string
+          timestamp: p.t
         }));
-        
-        // Separate past and future predictions
+
         const pastPredictions = allPredictions.filter((p: any) => p.time < now);
         const futurePredictions = allPredictions.filter((p: any) => p.time >= now);
-        
-        // Find ACTUAL previous tides (from past)
+
         for (let i = pastPredictions.length - 1; i >= 0; i--) {
           const prediction = pastPredictions[i];
-          
           if (prediction.type === 'H' && !previousHigh) {
-            previousHigh = {
-              time: prediction.t,
-              height: prediction.parsedHeight,
-              timestamp: prediction.timestamp
-            };
+            previousHigh = { time: prediction.t, height: prediction.parsedHeight, timestamp: prediction.timestamp };
           } else if (prediction.type === 'L' && !previousLow) {
-            previousLow = {
-              time: prediction.t,
-              height: prediction.parsedHeight,
-              timestamp: prediction.timestamp
-            };
+            previousLow = { time: prediction.t, height: prediction.parsedHeight, timestamp: prediction.timestamp };
           }
-          
           if (previousHigh && previousLow) break;
         }
-        
-        // Find next tides (from future)
+
         for (const prediction of futurePredictions) {
           if (prediction.type === 'H' && !nextHigh) {
-            nextHigh = {
-              time: prediction.t,
-              height: prediction.parsedHeight,
-              timestamp: prediction.timestamp
-            };
+            nextHigh = { time: prediction.t, height: prediction.parsedHeight, timestamp: prediction.timestamp };
           } else if (prediction.type === 'L' && !nextLow) {
-            nextLow = {
-              time: prediction.t,
-              height: prediction.parsedHeight,
-              timestamp: prediction.timestamp
-            };
+            nextLow = { time: prediction.t, height: prediction.parsedHeight, timestamp: prediction.timestamp };
           }
-          
           if (nextHigh && nextLow) break;
         }
       }
     }
-    
-    // Use the tide state calculation
+
     const state = calculateTideState(currentHeight, nextHigh, nextLow, previousHigh, previousLow);
-    
-    // Fallback current height
+
     if (currentHeight === 0) {
-      if (nextHigh && nextLow) {
-        currentHeight = (nextHigh.height + nextLow.height) / 2;
-      } else {
-        currentHeight = 1.5;
-      }
+      currentHeight = nextHigh && nextLow ? (nextHigh.height + nextLow.height) / 2 : 1.5;
     }
-    
-    console.log('🌊 Tide Debug:', {
-      currentHeight,
-      state,
-      nextHigh: nextHigh?.time,
-      nextLow: nextLow?.time,
-      previousHigh: previousHigh?.time,
-      previousLow: previousLow?.time
-    });
-    
-    return {
-      currentHeight,
-      state,
-      nextHigh,
-      nextLow,
-      previousHigh,
-      previousLow
-    };
-    
+
+    return { currentHeight, state, nextHigh, nextLow, previousHigh, previousLow };
   } catch (error) {
     console.error('Error fetching tide data:', error);
     throw new Error('Failed to fetch tide data');
@@ -554,103 +352,76 @@ async function fetchTideData(): Promise<TideData> {
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
-    console.log('🎯 SURF CONDITIONS REQUEST (Real Data Only)');
-    
-    // Debug parameter for water temperature testing
+    const slug = request.nextUrl.searchParams.get('location') ?? DEFAULT_LOCATION_SLUG;
+    const location = getLocation(slug);
+
+    if (!location) {
+      return NextResponse.json({ error: `Unknown location: ${slug}` }, { status: 400 });
+    }
+
+    console.log(`🎯 SURF CONDITIONS REQUEST: ${location.name}`);
+
+    // Debug parameter
     if (request.nextUrl.searchParams.get('debug') === 'water-temp') {
       try {
-        const debugResult = await fetchMarineData();
-        return NextResponse.json({
-          debug: true,
-          waterTempResult: debugResult,
-          message: 'Check server console for detailed debug logs',
-          timestamp: new Date().toISOString()
-        });
+        const debugResult = await fetchMarineData(location.lat, location.lon, location.timezone);
+        return NextResponse.json({ debug: true, waterTempResult: debugResult, timestamp: new Date().toISOString() });
       } catch (error) {
-        return NextResponse.json({
-          debug: true,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          message: 'Marine data fetch failed - check server console',
-          timestamp: new Date().toISOString()
-        }, { status: 503 });
+        return NextResponse.json({ debug: true, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 503 });
       }
     }
-    
-    // Step 1: Fetch REAL marine data or fail
+
+    // Step 1: Marine data
     let marineData;
     try {
-      marineData = await fetchMarineData();
-      console.log('✅ Real marine data obtained');
+      marineData = await fetchMarineData(location.lat, location.lon, location.timezone);
     } catch (error) {
-      console.log('❌ No real marine data available:', error);
       return NextResponse.json({
         error: 'Real marine conditions unavailable',
         details: error instanceof Error ? error.message : 'Unknown marine data error',
-        dataPolicy: 'This service only provides real-time conditions',
-        recommendation: 'Try again in a few minutes - marine monitoring stations may be temporarily unavailable',
         timestamp: new Date().toISOString(),
         retryAfter: '5-15 minutes'
       }, { status: 503 });
     }
-    
-    // Step 2: Fetch tide data
+
+    // Step 2: Tide data
     let tideData;
     try {
-      tideData = await fetchTideData();
-      console.log('✅ Tide data obtained');
+      tideData = await fetchTideData(location.noaaStationId);
     } catch (error) {
-      console.log('❌ Tide data failed:', error);
       return NextResponse.json({
         error: 'Real tide conditions unavailable',
         details: error instanceof Error ? error.message : 'Unknown tide error',
-        marineDataAvailable: true,
         timestamp: new Date().toISOString()
       }, { status: 503 });
     }
-    
-    // Step 3: Fetch weather data
-    console.log('🌤️ Fetching weather data...');
+
+    // Step 3: Weather data
     const weatherRes = await fetch(
-      'https://api.open-meteo.com/v1/forecast?latitude=29.9&longitude=-81.3&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&timezone=America/New_York&forecast_days=1',
-      { signal: AbortSignal.timeout(10000) }
+      `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&timezone=${encodeURIComponent(location.timezone)}&forecast_days=1`,
+      { cache: 'no-store', signal: AbortSignal.timeout(10000) }
     );
-    
+
     if (!weatherRes.ok) {
-      console.log('❌ Weather data failed');
       return NextResponse.json({
         error: 'Weather conditions unavailable',
         details: `Weather API returned ${weatherRes.status}`,
-        marineDataAvailable: true,
-        tideDataAvailable: true,
         timestamp: new Date().toISOString()
       }, { status: 503 });
     }
-    
+
     const weatherData = await weatherRes.json();
-    console.log('✅ Weather API response received');
-    
-    // Extract wind conditions
-    const windSpeed = weatherData.current.wind_speed_10m * 0.539957; // Convert m/s to knots
+
+    const windSpeed = weatherData.current.wind_speed_10m * 0.539957; // m/s → knots
     const windDirection = weatherData.current.wind_direction_10m;
-    
-    // Get compass directions for both swell and wind
+
     const swellCompass = degreesToCompass(marineData.swellDirection);
     const windCompass = degreesToCompass(windDirection);
-    const windDescription = getWindDescription(windDirection, windSpeed);
-    
-    console.log('📊 Final extracted conditions (ALL REAL DATA):', {
-      waveHeight: `${marineData.waveHeight.toFixed(1)}ft`,
-      wavePeriod: `${marineData.wavePeriod}s`,
-      swellDirection: `${marineData.swellDirection}° (${swellCompass})`,
-      windSpeed: `${windSpeed.toFixed(1)}kts`,
-      windDirection: `${windDirection}° (${windDescription})`,
-      tideState: tideData.state,
-      tideHeight: `${tideData.currentHeight.toFixed(1)}ft`,
-      waterTemp: `${marineData.waterTemp}°C (${(marineData.waterTemp * 9/5 + 32).toFixed(1)}°F)`
-    });
-    
+    const windDescription = getWindDescription(windDirection, windSpeed, location.coastFacingDeg);
+    const swellDescription = getSwellDirectionDescription(marineData.swellDirection, location.coastFacingDeg);
+
     const currentSurfData: SurfData = {
       waveHeight: marineData.waveHeight,
       wavePeriod: marineData.wavePeriod,
@@ -660,31 +431,24 @@ export async function GET(request: NextRequest) {
       tide: tideData.state,
       tideHeight: tideData.currentHeight,
     };
-    
+
     const { score, surfable, rating, funRating } = calculateSurfability(currentSurfData);
-    
-    // Format tide times
+
     const formatTideTime = (tideEvent: { time: string; height: number; timestamp: string } | null) => {
       if (!tideEvent) return null;
-      
       const time = new Date(tideEvent.timestamp);
-      const timeStr = time.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-      
       return {
-        time: timeStr,
+        time: time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
         height: Math.round(tideEvent.height * 10) / 10,
         timestamp: tideEvent.timestamp
       };
     };
-    
+
     const responseTime = Date.now() - startTime;
-    
-    const response = {
-      location: 'St. Augustine, FL',
+
+    return NextResponse.json({
+      location: location.name,
+      locationSlug: location.slug,
       timestamp: new Date().toISOString(),
       surfable,
       rating: funRating,
@@ -695,13 +459,13 @@ export async function GET(request: NextRequest) {
         wave_height_ft: Math.round(marineData.waveHeight * 10) / 10,
         wave_period_sec: Math.round(marineData.wavePeriod * 10) / 10,
         swell_direction_deg: Math.round(marineData.swellDirection),
-        swell_direction_compass: swellCompass, // 🆕 Added compass direction
-        swell_direction_text: `${swellCompass} swell (from ${swellCompass})`, // 🆕 Crystal clear
-        swell_direction_description: getSwellDirectionDescription(marineData.swellDirection), // 🆕 Added description
+        swell_direction_compass: swellCompass,
+        swell_direction_text: `${swellCompass} swell (from ${swellCompass})`,
+        swell_direction_description: swellDescription,
         wind_direction_deg: Math.round(windDirection),
-        wind_direction_compass: windCompass, // 🆕 Added compass direction
-        wind_direction_text: `${windCompass} wind (from ${windCompass})`, // 🆕 Crystal clear  
-        wind_direction_description: windDescription, // 🆕 Added full description
+        wind_direction_compass: windCompass,
+        wind_direction_text: `${windCompass} wind (from ${windCompass})`,
+        wind_direction_description: windDescription,
         wind_speed_kts: Math.round(windSpeed * 10) / 10,
         tide_state: tideData.state,
         tide_height_ft: Math.round(tideData.currentHeight * 10) / 10,
@@ -709,9 +473,9 @@ export async function GET(request: NextRequest) {
       },
       weather: {
         air_temperature_c: Math.round(weatherData.current.temperature_2m),
-        air_temperature_f: Math.round(weatherData.current.temperature_2m * 9/5 + 32),
+        air_temperature_f: Math.round(weatherData.current.temperature_2m * 9 / 5 + 32),
         water_temperature_c: Math.round(marineData.waterTemp),
-        water_temperature_f: Math.round(marineData.waterTemp * 9/5 + 32),
+        water_temperature_f: Math.round(marineData.waterTemp * 9 / 5 + 32),
         weather_code: weatherData.current.weather_code,
         weather_description: weatherDescriptions[weatherData.current.weather_code] || 'Unknown conditions'
       },
@@ -722,22 +486,19 @@ export async function GET(request: NextRequest) {
         next_low: formatTideTime(tideData.nextLow),
         previous_high: formatTideTime(tideData.previousHigh),
         previous_low: formatTideTime(tideData.previousLow),
-        station: 'NOAA 8720587 (St. Augustine Beach, FL)'
+        station: `NOAA ${location.noaaStationId} (${location.name})`
       },
-      // Debug info
       _debug: {
         responseTime: `${responseTime}ms`,
         dataSourcesUsed: ['Open-Meteo Marine', 'NOAA Tides', 'Open-Meteo Weather'],
         noFallbacksUsed: true
       }
-    };
-    
-    return NextResponse.json(response);
-    
+    });
+
   } catch (error) {
     console.error('❌ Unexpected API Error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Unexpected error fetching real-time conditions',
         details: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),

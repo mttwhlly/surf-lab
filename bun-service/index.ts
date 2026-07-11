@@ -11,7 +11,7 @@ const surfReportSchema = z.object({
     boardType: z.string().describe("General board type recommendation (longboard, shortboard, funboard) - NO specific sizes"),
     wetsuitThickness: z.string().optional().describe("Wetsuit recommendation"),
     skillLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe("Recommended skill level"),
-    bestSpots: z.array(z.string()).min(2).describe("Top 2-3 spot recommendations"),
+    bestSpots: z.array(z.string()).min(2).describe("Top 2-3 spot recommendations for this location"),
     timingAdvice: z.string().describe("When to surf — or when to check back if conditions are not currently viable")
   })
 })
@@ -34,51 +34,51 @@ function corsResponse() {
   return new Response(null, { status: 204, headers: corsHeaders })
 }
 
-// Approximate sunrise/sunset for St. Augustine, FL (30°N) in Eastern local time (decimal hours).
-// Accounts for DST: EDT months use DST-adjusted values.
-const SURF_WINDOW: [number, number][] = [
-  [7.25, 17.65], // Jan
-  [7.05, 18.15], // Feb
-  [7.45, 19.6],  // Mar (DST mid-month, averaged)
-  [6.75, 19.9],  // Apr
-  [6.4,  20.25], // May
-  [6.35, 20.5],  // Jun
-  [6.5,  20.4],  // Jul
-  [6.85, 20.05], // Aug
-  [7.1,  19.35], // Sep
-  [7.35, 18.65], // Oct
-  [6.75, 17.85], // Nov (DST ends early month, averaged)
-  [7.1,  17.55], // Dec
-]
-
-function getEasternTime(): { hour: number, month: number, formatted: string } {
+function getLocalTime(timezone: string): { hour: number; month: number; formatted: string } {
   const now = new Date()
-  const eastern = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const hour = eastern.getHours() + eastern.getMinutes() / 60
-  const month = eastern.getMonth()
-  const formatted = eastern.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+  const hour = local.getHours() + local.getMinutes() / 60
+  const month = local.getMonth()
+  const formatted = local.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
   return { hour, month, formatted }
 }
 
-function getSurfWindow(month: number): { rise: number, set: number } {
-  const [rise, set] = SURF_WINDOW[month]!
-  return { rise, set }
+// Approximate sunrise/sunset based on latitude and day of year (±15–20 min accuracy)
+function getDaylightWindow(lat: number, timezone: string): { rise: number; set: number } {
+  const now = new Date()
+  const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+  const startOfYear = new Date(local.getFullYear(), 0, 0)
+  const dayOfYear = Math.floor((local.getTime() - startOfYear.getTime()) / 86400000)
+
+  // Solar declination
+  const decl = -23.45 * Math.cos(2 * Math.PI * (dayOfYear + 10) / 365.25)
+
+  // Hour angle at sunrise/sunset (cos = -tan(lat)*tan(decl))
+  const cosHA = -Math.tan(lat * Math.PI / 180) * Math.tan(decl * Math.PI / 180)
+
+  if (cosHA > 1) return { rise: 12, set: 12 }  // polar night
+  if (cosHA < -1) return { rise: 0, set: 24 }  // midnight sun
+
+  const ha = (Math.acos(cosHA) * 180 / Math.PI) / 15  // hours from solar noon
+  return { rise: 12 - ha, set: 12 + ha }
 }
 
 type SessionViability =
   | { viable: true }
-  | { viable: false, reason: 'night', riseStr: string }
-  | { viable: false, reason: 'lightning' }
+  | { viable: false; reason: 'night'; riseStr: string }
+  | { viable: false; reason: 'lightning' }
 
-function getSessionViability(hour: number, month: number, weatherDescription: string): SessionViability {
+function getSessionViability(hour: number, lat: number, timezone: string, weatherDescription: string): SessionViability {
   if (/thunder|lightning|tropical storm|hurricane/i.test(weatherDescription)) {
     return { viable: false, reason: 'lightning' }
   }
-  const { rise, set } = getSurfWindow(month)
+  const { rise, set } = getDaylightWindow(lat, timezone)
   if (hour < rise || hour >= set) {
     const riseH = Math.floor(rise)
     const riseM = Math.round((rise % 1) * 60)
-    const riseStr = `${riseH}:${riseM.toString().padStart(2, '0')} AM`
+    const period = riseH < 12 ? 'AM' : 'PM'
+    const displayH = riseH <= 12 ? riseH : riseH - 12
+    const riseStr = `${displayH}:${riseM.toString().padStart(2, '0')} ${period}`
     return { viable: false, reason: 'night', riseStr }
   }
   return { viable: true }
@@ -86,7 +86,7 @@ function getSessionViability(hour: number, month: number, weatherDescription: st
 
 function getCompassDirection(degrees: number): string {
   const directions = ['North', 'NNE', 'NE', 'ENE', 'East', 'ESE', 'SE', 'SSE',
-                     'South', 'SSW', 'SW', 'WSW', 'West', 'WNW', 'NW', 'NNW']
+    'South', 'SSW', 'SW', 'WSW', 'West', 'WNW', 'NW', 'NNW']
   const index = Math.round(degrees / 22.5) % 16
   return directions[index]
 }
@@ -123,12 +123,21 @@ function getFallbackTimingAdvice(tideState: string, viability: SessionViability)
   return 'Mid to outgoing tide usually favours the local breaks — check tide charts for timing'
 }
 
-function createDetailedSurfPrompt(surfData: any): string {
+interface LocationContext {
+  locationName: string;
+  localKnowledge: string;
+  voiceDescriptor: string;
+  bestSpots: string[];
+  lat: number;
+  timezone: string;
+}
+
+function createDetailedSurfPrompt(surfData: any, ctx: LocationContext): string {
   const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
   const swellDirection = getCompassDirection(surfData.details.swell_direction_deg)
   const windDirection = getCompassDirection(surfData.details.wind_direction_deg)
-  const { hour, month, formatted: localTime } = getEasternTime()
-  const viability = getSessionViability(hour, month, surfData.weather.weather_description)
+  const { hour, month, formatted: localTime } = getLocalTime(ctx.timezone)
+  const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description)
 
   const viabilityNote = viability.viable
     ? 'Surfable now'
@@ -147,11 +156,17 @@ There is active lightning or thunderstorm activity. This overrides everything el
 IMPORTANT — TIMING OVERRIDE:
 It is currently nighttime. Nobody surfs in the dark.
 - Do NOT attempt to describe or predict tomorrow's conditions — you have no forecast data, only a current snapshot that may not reflect what morning will bring.
-- Paragraph 1: acknowledge it's night and surfing isn't happening. If the user seems curious about conditions, you may briefly describe the CURRENT snapshot (not as a prediction) — e.g. "if you're wondering what's out there right now, there's X ft at Xs from the Y."
+- Paragraph 1: acknowledge it's night and surfing isn't happening. If the user seems curious about conditions, you may briefly describe the CURRENT snapshot (not as a prediction).
 - Paragraph 2: keep it short. Tell them to come back tomorrow when conditions can be properly assessed. No guessing, no false optimism.
 - timingAdvice: "Check back tomorrow" — nothing more specific.`
 
-  return `You are an experienced local surf forecaster for St. Augustine, Florida. Write a 2-paragraph surf report. Be honest — don't oversell poor surf.
+  return `You are a ${ctx.voiceDescriptor}. Write a 2-paragraph surf report for ${ctx.locationName}. Be honest — don't oversell poor surf.
+
+LOCAL KNOWLEDGE FOR THIS SPOT:
+${ctx.localKnowledge}
+
+RECOMMENDED SPOTS:
+${ctx.bestSpots.join(', ')}
 
 CURRENT CONDITIONS:
 • Wave Height: ${surfData.details.wave_height_ft} feet
@@ -164,27 +179,27 @@ CURRENT CONDITIONS:
 • Overall Score: ${surfData.score}/100
 • Wave Quality: ${getWaveQuality(surfData.details.wave_height_ft, surfData.details.wave_period_sec)}
 • Tide Context: ${getTideContext(surfData.details.tide_state)}
-• Local Time: ${localTime} ET
+• Local Time: ${localTime}
 • Session Status: ${viabilityNote}
 ${viabilityInstructions}
-NOTE: The raw numbers above are already shown to the user as data cards. The paragraphs below should interpret and contextualise — not restate the same figures.
+NOTE: The raw numbers above are already shown to the user as data cards. The paragraphs below should interpret and contextualise using the local knowledge above — not restate the same figures.
 
 WRITE EXACTLY 2 PARAGRAPHS:
 
 **Paragraph 1 - Conditions Analysis** (3-4 sentences):
-Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality here — the character of the waves, whether they'll have power or be mushy, onshore/offshore effect. Weave in how the tide and water temp affect the experience. Do NOT simply list each metric again.
+Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy, onshore/offshore effect. Use your local knowledge of this break to make it specific and accurate. Weave in how the tide and water temp affect the experience.
 
 **Paragraph 2 - Context & Vibe** (3-4 sentences):
 The app already shows the user their board recommendation, wetsuit, and top spots as separate UI elements — do NOT repeat those specifics here. Instead give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
 
-TONE: Conversational local surfer. Use some surf slang but keep it readable.`
+TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
 }
 
-async function generateDetailedSurfReport(surfData: any) {
-  console.log('🤖 Generating detailed surf report with compass directions...')
+async function generateDetailedSurfReport(surfData: any, ctx: LocationContext) {
+  console.log(`🤖 Generating surf report for ${ctx.locationName}...`)
 
   try {
-    const prompt = createDetailedSurfPrompt(surfData)
+    const prompt = createDetailedSurfPrompt(surfData, ctx)
 
     const { object: aiResponse } = await generateObject({
       model: anthropic('claude-haiku-4-5-20251001'),
@@ -199,12 +214,12 @@ async function generateDetailedSurfReport(surfData: any) {
       aiResponse.recommendationsAndOutlook
     ].join('\n\n')
 
-    console.log(`✅ AI generated report (${fullReport.split(' ').length} words)`)
+    console.log(`✅ AI generated report for ${ctx.locationName} (${fullReport.split(' ').length} words)`)
 
-    const report = {
-      id: `surf_2para_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    return {
+      id: `surf_${ctx.locationName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       timestamp: new Date().toISOString(),
-      location: surfData.location,
+      location: surfData.locationSlug ?? surfData.location,
       report: fullReport,
       conditions: {
         wave_height_ft: surfData.details.wave_height_ft,
@@ -236,30 +251,27 @@ async function generateDetailedSurfReport(surfData: any) {
       },
       cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
       generation_meta: {
-        backend: 'bun-enhanced-with-compass',
+        backend: 'bun-multi-location',
         model: 'claude-haiku-4-5-20251001',
         report_length: fullReport.length,
         word_count: fullReport.split(' ').length,
         paragraphs: 2,
-        prompt_version: '2.4',
-        includes_compass_data: true
+        prompt_version: '3.0',
       }
     }
 
-    return report
-
   } catch (error) {
-    console.error('❌ Enhanced AI generation failed:', error)
+    console.error(`❌ AI generation failed for ${ctx.locationName}:`, error)
 
     const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
-    const { hour, month } = getEasternTime()
-    const viability = getSessionViability(hour, month, surfData.weather.weather_description)
-    const fallbackReport = createEnhancedFallbackReport(surfData, windMph, viability)
+    const { hour } = getLocalTime(ctx.timezone)
+    const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description)
+    const fallbackReport = createEnhancedFallbackReport(surfData, windMph, ctx, viability)
 
     return {
-      id: `surf_fallback_enhanced_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `surf_fallback_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       timestamp: new Date().toISOString(),
-      location: surfData.location,
+      location: surfData.locationSlug ?? surfData.location,
       report: fallbackReport,
       conditions: {
         wave_height_ft: surfData.details.wave_height_ft,
@@ -288,24 +300,23 @@ async function generateDetailedSurfReport(surfData: any) {
           : surfData.weather.water_temperature_f < 72 ? 'Spring suit'
           : undefined,
         skill_level: surfData.score >= 65 ? 'intermediate' : 'beginner',
-        best_spots: ['Vilano Beach', 'St. Augustine Pier', 'Crescent Beach'],
+        best_spots: ctx.bestSpots,
         timing_advice: getFallbackTimingAdvice(surfData.details.tide_state, viability)
       },
       cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
       generation_meta: {
-        backend: 'bun-enhanced-fallback',
-        model: 'hardcoded-with-compass',
+        backend: 'bun-fallback',
+        model: 'hardcoded',
         report_length: fallbackReport.length,
         word_count: fallbackReport.split(' ').length,
         paragraphs: 2,
-        prompt_version: '2.4',
-        includes_compass_data: true
+        prompt_version: '3.0',
       }
     }
   }
 }
 
-function createEnhancedFallbackReport(surfData: any, windMph: number, viability: SessionViability): string {
+function createEnhancedFallbackReport(surfData: any, windMph: number, ctx: LocationContext, viability: SessionViability): string {
   if (!viability.viable) {
     if (viability.reason === 'lightning') {
       const p1 = `Lightning and thunderstorm activity means the ocean is unsafe right now — stay out of the water. No surf session is worth the risk during an electrical storm.`
@@ -313,23 +324,18 @@ function createEnhancedFallbackReport(surfData: any, windMph: number, viability:
       return `${p1}\n\n${p2}`
     }
     const waveDesc = surfData.details.wave_height_ft >= 4 ? 'solid' : surfData.details.wave_height_ft >= 2 ? 'fun-sized' : 'small'
-    const p1 = `It's dark out — no surfing tonight. If you're still curious, the current snapshot shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec}s from the ${surfData.details.swell_direction_compass || 'east'} with ${windMph} mph ${surfData.details.wind_direction_compass || 'variable'} winds, but that's right now — not a forecast for tomorrow.`
+    const p1 = `It's dark out — no surfing tonight at ${ctx.locationName}. If you're still curious, the current snapshot shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec}s from the ${surfData.details.swell_direction_compass || 'east'} with ${windMph} mph ${surfData.details.wind_direction_compass || 'variable'} winds, but that's right now — not a forecast for tomorrow.`
     const p2 = `Check back tomorrow for an accurate read on conditions. Night surf isn't worth it, and neither is guessing.`
     return `${p1}\n\n${p2}`
   }
 
   const condition = surfData.score >= 70 ? 'good' : surfData.score >= 50 ? 'fair' : 'poor'
-  const waveDesc = surfData.details.wave_height_ft >= 4 ? 'solid'
-    : surfData.details.wave_height_ft >= 2 ? 'fun-sized' : 'small'
-
+  const waveDesc = surfData.details.wave_height_ft >= 4 ? 'solid' : surfData.details.wave_height_ft >= 2 ? 'fun-sized' : 'small'
   const swellCompass = surfData.details.swell_direction_compass || 'unknown direction'
   const windCompass = surfData.details.wind_direction_compass || 'variable'
+  const primarySpot = ctx.bestSpots[0] || ctx.locationName
 
-  const paragraph1 = `St. Augustine surf check shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec} seconds coming from the ${swellCompass}, delivering ${surfData.details.wave_period_sec >= 10 ? 'decent power with some nice long rides' : 'quicker, choppier waves with less power'}. Wind is ${windMph} mph from the ${windCompass} which ${windMph < 10 ? 'is light enough for clean, glassy conditions' : 'is creating some texture and bump on the water'}. Tide is ${surfData.details.tide_state.toLowerCase()} at ${surfData.details.tide_height_ft}ft and water temp is ${surfData.weather.water_temperature_f}°F.`
-
-  const spotContext = surfData.details.wave_height_ft >= 3
-    ? 'Vilano Beach or the pier area should have the most defined peaks with some punch to them'
-    : 'Crescent Beach or Vilano tend to find a way to produce rideable waves even on smaller days'
+  const paragraph1 = `${ctx.locationName} surf check shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec} seconds coming from the ${swellCompass}, delivering ${surfData.details.wave_period_sec >= 10 ? 'decent power with some nice long rides' : 'quicker, choppier waves with less power'}. Wind is ${windMph} mph from the ${windCompass} which ${windMph < 10 ? 'is light enough for clean, glassy conditions' : 'is creating some texture and bump on the water'}. Tide is ${surfData.details.tide_state.toLowerCase()} at ${surfData.details.tide_height_ft}ft and water temp is ${surfData.weather.water_temperature_f}°F.`
 
   const tideNote = surfData.details.tide_state.includes('Rising')
     ? 'Tide is rising which often cleans things up — worth getting out sooner'
@@ -343,7 +349,7 @@ function createEnhancedFallbackReport(surfData: any, windMph: number, viability:
     : condition === 'fair' ? 'Surfable if you need your wave fix.'
     : 'Might be better for a beach walk, but conditions can change quickly.'
 
-  return `${paragraph1}\n\n${spotContext}. ${tideNote}. ${verdict}`
+  return `${paragraph1}\n\n${primarySpot} is worth checking. ${tideNote}. ${verdict}`
 }
 
 async function handleRequest(req: Request): Promise<Response> {
@@ -361,33 +367,37 @@ async function handleRequest(req: Request): Promise<Response> {
       timestamp: new Date().toISOString(),
       runtime: 'Bun',
       version: Bun.version,
-      features: ['detailed-reports', 'multi-paragraph', 'enhanced-prompts', 'session-viability']
+      features: ['multi-location', 'detailed-reports', 'session-viability', 'local-knowledge']
     })
   }
 
   if (method === 'POST' && url.pathname === '/generate-surf-report') {
     try {
       const body = await req.json()
-      const { surfData, apiKey } = body
+      const { surfData, apiKey, localKnowledge, voiceDescriptor, bestSpots, locationName, lat, timezone } = body
 
       if (apiKey !== process.env.API_SECRET) {
         return jsonResponse({ error: 'Unauthorized' }, 401)
       }
-
       if (!surfData) {
         return jsonResponse({ error: 'Missing surf data' }, 400)
       }
 
-      const report = await generateDetailedSurfReport(surfData)
+      const ctx: LocationContext = {
+        locationName: locationName ?? surfData.location ?? 'Unknown',
+        localKnowledge: localKnowledge ?? '',
+        voiceDescriptor: voiceDescriptor ?? 'experienced surf forecaster',
+        bestSpots: bestSpots ?? [],
+        lat: lat ?? 30,
+        timezone: timezone ?? 'America/New_York',
+      }
+
+      const report = await generateDetailedSurfReport(surfData, ctx)
 
       return jsonResponse({
         success: true,
         report,
-        performance: {
-          backend: 'bun-enhanced',
-          runtime: 'bun',
-          features: ['detailed-structure', 'multiple-paragraphs', 'enhanced-prompts', 'session-viability']
-        }
+        performance: { backend: 'bun-multi-location', runtime: 'bun' }
       })
 
     } catch (error) {
@@ -403,25 +413,37 @@ async function handleRequest(req: Request): Promise<Response> {
   if (method === 'POST' && url.pathname === '/cron/generate-fresh-report') {
     try {
       const body = await req.json()
-      const { cronSecret, vercelUrl } = body
+      const {
+        cronSecret, vercelUrl,
+        locationSlug, locationName, localKnowledge, voiceDescriptor, bestSpots, lat, timezone
+      } = body
 
       if (cronSecret !== process.env.CRON_SECRET) {
         return jsonResponse({ error: 'Unauthorized' }, 401)
       }
 
-      console.log('🌊 Fetching surf data...')
-      const surfDataResponse = await fetch(`${vercelUrl}/api/surfability`)
+      const slug = locationSlug ?? 'st-augustine'
+      const ctx: LocationContext = {
+        locationName: locationName ?? slug,
+        localKnowledge: localKnowledge ?? '',
+        voiceDescriptor: voiceDescriptor ?? 'experienced surf forecaster',
+        bestSpots: bestSpots ?? [],
+        lat: lat ?? 30,
+        timezone: timezone ?? 'America/New_York',
+      }
+
+      console.log(`🌊 Fetching surf data for ${ctx.locationName}...`)
+      const surfDataResponse = await fetch(`${vercelUrl}/api/surfability?location=${slug}`)
 
       if (!surfDataResponse.ok) {
         throw new Error(`Surf data failed: ${surfDataResponse.status}`)
       }
 
       const surfData = await surfDataResponse.json()
-      console.log('📊 Got surf data:', surfData.location)
+      console.log(`📊 Got surf data for ${ctx.locationName}: ${surfData.details?.wave_height_ft}ft`)
 
-      const report = await generateDetailedSurfReport(surfData)
-
-      console.log(`✅ Detailed report generated: ${report.id} (${report.generation_meta.word_count} words)`)
+      const report = await generateDetailedSurfReport(surfData, ctx)
+      console.log(`✅ Report generated: ${report.id} (${report.generation_meta.word_count} words)`)
 
       try {
         const saveResponse = await fetch(`${vercelUrl}/api/admin/save-report`, {
@@ -433,38 +455,37 @@ async function handleRequest(req: Request): Promise<Response> {
           body: JSON.stringify({ report })
         })
 
-        if (saveResponse.ok) {
-          console.log('✅ Detailed report saved successfully')
+        if (!saveResponse.ok) {
+          console.warn(`⚠️ Save failed for ${ctx.locationName}:`, saveResponse.status)
         } else {
-          console.warn('⚠️ Save failed but continuing:', saveResponse.status)
+          console.log(`✅ Saved report for ${ctx.locationName}`)
         }
-
       } catch (saveError) {
-        console.warn('⚠️ Save error but continuing:', saveError)
+        console.warn(`⚠️ Save error for ${ctx.locationName}:`, saveError)
       }
 
       return jsonResponse({
         success: true,
         timestamp: new Date().toISOString(),
-        backend: 'bun-enhanced',
+        backend: 'bun-multi-location',
         actions: {
           surf_data_fetched: true,
           ai_report_generated: true,
           new_report_id: report.id,
+          location: ctx.locationName,
           report_quality: {
             word_count: report.generation_meta.word_count,
             paragraphs: report.generation_meta.paragraphs,
             length: report.generation_meta.report_length,
-            backend: report.generation_meta.backend
           }
         }
       })
 
     } catch (error) {
-      console.log('❌ Enhanced cron endpoint failed:', error)
+      console.log('❌ Cron endpoint failed:', error)
       return jsonResponse({
         success: false,
-        error: '2-paragraph cron failed',
+        error: 'Cron generation failed',
         details: error instanceof Error ? error.message : String(error)
       }, 500)
     }
@@ -475,7 +496,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
 const port = parseInt(process.env.PORT || '3000')
 
-console.log(`🚀 Can I Surf Today? starting on port ${port}`)
+console.log(`🚀 Can I Surf Today? (multi-location) starting on port ${port}`)
 console.log(`⚡ Runtime: Bun ${Bun.version}`)
 
 serve({
