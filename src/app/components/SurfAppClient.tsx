@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useSurfReportOptimized } from '../hooks/useSurfReportOptimized';
 import { SurfReportCard } from './surf/SurfReportCard';
 import { ErrorCard } from './ui/ErrorCard';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SurfReport } from '../types/surf-report';
 import { getLocation, LOCATIONS } from '../lib/locations';
 
@@ -44,6 +44,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { report: surfReport, loading: reportLoading, error: reportError } =
     useSurfReportOptimized({ initialData: initialReport, locationSlug });
@@ -88,6 +90,42 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   }
 
   const showInstall = !isStandalone && !!installPrompt && !!surfReport && !reportLoading;
+  const showListen = !!surfReport && !reportLoading;
+
+  async function handleListen() {
+    if (audioState === 'playing') {
+      audioRef.current?.pause();
+      setAudioState('idle');
+      return;
+    }
+    if (!surfReport || audioState === 'loading') return;
+
+    setAudioState('loading');
+    try {
+      const res = await fetch('/api/audio-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: surfReport.report }),
+      });
+      if (!res.ok) throw new Error('Audio generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.playbackRate = 1.1;
+      audioRef.current = audio;
+      const cleanup = () => { setAudioState('idle'); URL.revokeObjectURL(url); };
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+      await new Promise<void>((resolve) => {
+        audio.addEventListener('canplay', () => resolve(), { once: true });
+        audio.load();
+      });
+      setAudioState('playing');
+      audio.play();
+    } catch {
+      setAudioState('idle');
+    }
+  }
 
   function handleLocationChange(slug: string) {
     localStorage.setItem(STORAGE_KEY, slug);
@@ -251,6 +289,55 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
               )}
             </AnimatePresence>
           </div>
+
+          <AnimatePresence>
+            {showListen && (
+              <motion.div
+                className="flex items-center"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <motion.button
+                  onClick={handleListen}
+                  whileTap={{ scale: 0.93 }}
+                  disabled={audioState === 'loading'}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
+                  title={audioState === 'playing' ? 'Pause' : 'Listen to surf report'}
+                >
+                  {audioState === 'idle' && (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <polygon points="5,3 19,12 5,21" />
+                      </svg>
+                      Listen
+                    </>
+                  )}
+                  {audioState === 'loading' && (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin">
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                      </svg>
+                      Loading…
+                    </>
+                  )}
+                  {audioState === 'playing' && (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <rect x="6" y="4" width="4" height="16" rx="1" />
+                        <rect x="14" y="4" width="4" height="16" rx="1" />
+                      </svg>
+                      Playing
+                    </>
+                  )}
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {showInstall && (
