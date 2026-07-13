@@ -42,6 +42,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const locationName = location?.name ?? locationSlug;
   const [open, setOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const { report: surfReport, loading: reportLoading, error: reportError } =
     useSurfReportOptimized({ initialData: initialReport, locationSlug });
@@ -61,6 +63,31 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, sourcesOpen]);
+
+  useEffect(() => {
+    setIsStandalone(
+      window.matchMedia('(display-mode: standalone)').matches ||
+      ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
+    );
+    const onPrompt = (e: Event) => { e.preventDefault(); setInstallPrompt(e as typeof installPrompt); };
+    const onInstalled = () => { setInstallPrompt(null); setIsStandalone(true); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleInstall() {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstallPrompt(null);
+  }
+
+  const showInstall = !isStandalone && !!installPrompt && !!surfReport && !reportLoading;
 
   function handleLocationChange(slug: string) {
     localStorage.setItem(STORAGE_KEY, slug);
@@ -225,7 +252,32 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             </AnimatePresence>
           </div>
 
-          {/* Future dock items slot in here as siblings */}
+          <AnimatePresence>
+            {showInstall && (
+              <motion.div
+                className="flex items-center"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <motion.button
+                  onClick={handleInstall}
+                  whileTap={{ scale: 0.93 }}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
+                  title="Add to Home Screen"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 16V4M8 12l4 4 4-4"/>
+                    <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
+                  </svg>
+                  Install
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </>
