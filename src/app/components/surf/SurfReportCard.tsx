@@ -32,11 +32,15 @@ interface SurfReportCardProps {
 export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   const formatTimeAgo = (timestamp: string) => {
     const reportTime = new Date(timestamp);
-    return reportTime.toLocaleDateString('en-US', {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-}) + ' @ ' + reportTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ;
+    const now = new Date();
+    const isToday =
+      reportTime.getFullYear() === now.getFullYear() &&
+      reportTime.getMonth() === now.getMonth() &&
+      reportTime.getDate() === now.getDate();
+    const datePart = isToday
+      ? 'Today'
+      : reportTime.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return datePart + ' @ ' + reportTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   // Don't render anything if loading and no report

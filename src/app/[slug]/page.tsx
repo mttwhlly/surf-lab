@@ -71,7 +71,11 @@ export default async function LocationPage({ params }: Props) {
 
   let initialReport = null;
   try {
-    initialReport = await getCachedReport(slug);
+    const cached = await getCachedReport(slug);
+    const ageMs = cached ? Date.now() - new Date(cached.timestamp).getTime() : Infinity;
+    // Only pass to client if fresh — same 8h window the API route uses.
+    // Stale data gets null so the client shows skeleton → fresh fetch.
+    if (ageMs < 8 * 60 * 60 * 1000) initialReport = cached;
   } catch (_) {}
 
   return <SurfAppClient initialReport={initialReport} locationSlug={slug} />;

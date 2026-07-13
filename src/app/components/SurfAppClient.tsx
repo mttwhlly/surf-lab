@@ -41,6 +41,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const location = getLocation(locationSlug);
   const locationName = location?.name ?? locationSlug;
   const [open, setOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const { report: surfReport, loading: reportLoading, error: reportError } =
     useSurfReportOptimized({ initialData: initialReport, locationSlug });
@@ -55,11 +56,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   }, [surfReport, reportLoading, locationName]);
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    if (!open && !sourcesOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setSourcesOpen(false); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, sourcesOpen]);
 
   function handleLocationChange(slug: string) {
     localStorage.setItem(STORAGE_KEY, slug);
@@ -80,22 +81,63 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         </div>
 
         <div className="mx-auto max-w-3xl w-full px-4 mt-6">
-          <pre className="text-sm text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl">
+          <p className="text-sm font-mono text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl">
             <span className="mr-2 font-bold">Heads up!</span>
-            This AI surf report uses real ocean and weather data, however, it can make mistakes so always check conditions yourself before paddling out.
-          </pre>
+            {'This AI surf report uses '}
+            <span className="relative inline-block">
+              <button
+                onClick={() => setSourcesOpen(o => !o)}
+                className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                real ocean and weather data
+              </button>
+              <AnimatePresence>
+                {sourcesOpen && (
+                  <motion.div
+                    className="absolute bottom-full left-1/2 mb-3 w-64 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50"
+                    style={{ translateX: '-50%', transformOrigin: 'bottom center' }}
+                    initial={{ opacity: 0, scale: 0.92, y: 6 }}
+                    animate={{ opacity: 1, scale: 1,    y: 0 }}
+                    exit={{    opacity: 0, scale: 0.92, y: 6 }}
+                    transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                  >
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-xs font-mono font-semibold uppercase tracking-widest text-gray-400">Data sources</p>
+                    </div>
+                    {[
+                      { label: 'Open-Meteo Marine', detail: 'Waves, swell, sea temp', href: 'https://open-meteo.com/en/docs/marine-weather-api' },
+                      { label: 'Open-Meteo Weather', detail: 'Wind, air temp, conditions', href: 'https://open-meteo.com/en/docs' },
+                      { label: 'NOAA Tides & Currents', detail: 'Tide height & predictions', href: 'https://tidesandcurrents.noaa.gov' },
+                    ].map(({ label, detail, href }) => (
+                      <a
+                        key={href}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-col px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        <span className="text-sm font-medium font-mono text-gray-800">{label}</span>
+                        <span className="text-xs font-mono text-gray-400">{detail}</span>
+                      </a>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </span>
+            {', however, it can make mistakes so always check conditions yourself before paddling out.'}
+          </p>
         </div>
       </div>
 
-      {/* Transparent scrim captures outside clicks */}
+      {/* Transparent scrim captures outside clicks for any open popover */}
       <AnimatePresence>
-        {open && (
+        {(open || sourcesOpen) && (
           <motion.div
             className="fixed inset-0 z-40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
+            onClick={() => { setOpen(false); setSourcesOpen(false); }}
           />
         )}
       </AnimatePresence>
@@ -108,7 +150,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             <motion.button
               onClick={() => setOpen(o => !o)}
               whileTap={{ scale: 0.93 }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-medium font-mono transition-colors ${
                 open ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'
               }`}
               aria-label="Change location"
@@ -163,7 +205,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                         }}
                         transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                         onClick={() => handleLocationChange(loc.slug)}
-                        className={`w-full text-left px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
+                        className={`w-full text-left px-4 py-2.5 text-sm font-mono whitespace-nowrap transition-colors ${
                           loc.slug === locationSlug
                             ? 'bg-gray-100 text-gray-900 font-semibold'
                             : 'text-gray-700 hover:bg-gray-50'
