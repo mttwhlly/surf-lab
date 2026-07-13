@@ -21,20 +21,22 @@ const baseUrl = process.env.NEXT_PUBLIC_API_URL ||
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: 'Can I Surf Today? - St. Augustine, FL',
+    default: 'Can I Surf Today?',
     template: '%s | Can I Surf Today?'
   },
-  description: 'Real-time AI-powered surf report for St. Augustine, Florida. Get current wave conditions, wind data, and surf recommendations updated 4 times daily.',
+  description: 'Real-time AI-powered surf reports for US surf spots — St. Augustine, Rockaway Beach, Huntington Beach, and more. Updated 4 times daily.',
   keywords: [
     'surf report',
-    'St. Augustine surf',
-    'Florida surf conditions', 
+    'surf conditions',
     'wave forecast',
     'AI surf report',
-    'surf conditions',
-    'Vilano Beach',
     'surf forecast AI',
-    'can I surf today'
+    'can I surf today',
+    'St. Augustine surf',
+    'Rockaway Beach surf',
+    'Huntington Beach surf',
+    'Oahu surf',
+    'Florida surf conditions',
   ],
   
   // Basic metadata
@@ -53,8 +55,8 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: baseUrl,
-    title: 'Can I Surf Today? - St. Augustine, FL',
-    description: 'Real-time AI-powered surf conditions for St. Augustine, Florida. Current waves, wind, and surf recommendations.',
+    title: 'Can I Surf Today?',
+    description: 'Real-time AI-powered surf reports for US surf spots. Current waves, wind, and surf recommendations updated 4 times daily.',
     siteName: 'Can I Surf Today?',
     images: [
       {
@@ -77,8 +79,8 @@ export const metadata: Metadata = {
   // Twitter metadata
   twitter: {
     card: 'summary_large_image',
-    title: 'Can I Surf Today? - St. Augustine, FL',
-    description: 'Real-time AI surf conditions for St. Augustine. Current waves, wind, and surf recommendations.',
+    title: 'Can I Surf Today?',
+    description: 'Real-time AI surf reports for US surf spots. Current waves, wind, and surf recommendations updated 4 times daily.',
     site: '@canisurftoday', // Replace with your Twitter handle if you have one
     creator: '@canisurftoday',
     images: [

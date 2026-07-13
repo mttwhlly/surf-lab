@@ -70,7 +70,12 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
 
   return (
     <>
-      <div className="flex flex-col items-center justify-start min-h-screen pb-28">
+      <motion.div
+        className="flex flex-col items-center justify-start min-h-screen pb-28"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
         <div className="mt-8">
           <Image src="/wave-logo.svg" alt="Can I Surf Today? Logo" width={64} height={64} priority />
         </div>
@@ -127,7 +132,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             {', however, it can make mistakes so always check conditions yourself before paddling out.'}
           </p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Transparent scrim captures outside clicks for any open popover */}
       <AnimatePresence>
