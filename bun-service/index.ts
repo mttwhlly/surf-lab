@@ -99,11 +99,17 @@ function getWaveQuality(height: number, period: number): string {
 }
 
 function getTideContext(tideState: string): string {
-  if (tideState.includes('Rising')) return 'Rising tide usually brings cleaner waves and better shape.'
-  if (tideState.includes('Falling')) return 'Falling tide can expose more sandbars but may get shallower.'
-  if (tideState.includes('High')) return 'High tide offers deeper water but waves may be mushier.'
-  if (tideState.includes('Low')) return 'Low tide exposes sandbars — watch for shallow sections.'
-  return 'Mid tide typically offers the most consistent conditions.'
+  if (tideState === 'Low Falling') return 'Already near low tide and still dropping — sandbars exposed, watch for shallow spots.'
+  if (tideState === 'Low Rising') return 'Just past low tide and filling in — bars exposed now but water coming up.'
+  if (tideState === 'High Rising') return 'Near high tide and still coming in — deep water, waves may be mushier.'
+  if (tideState === 'High Falling') return 'Just past high tide and starting to drain — water still full but dropping.'
+  if (tideState === 'Mid Rising') return 'Mid rising tide — usually the best window for shape and power.'
+  if (tideState === 'Mid Falling') return 'Mid falling tide — still good water on the bars, often decent conditions.'
+  if (tideState.includes('Rising')) return 'Tide rising — typically improves wave shape and power.'
+  if (tideState.includes('Falling')) return 'Tide falling — can expose sandbars but watch for shallowing.'
+  if (tideState.includes('High')) return 'High tide — deeper water but waves may be mushier.'
+  if (tideState.includes('Low')) return 'Low tide — sandbars exposed, watch for shallow sections.'
+  return 'Mid tide — typically the most consistent window.'
 }
 
 function getBoardTypeRecommendation(waveHeight: number): string {
@@ -160,6 +166,20 @@ It is currently nighttime. Nobody surfs in the dark.
 - Paragraph 2: keep it short. Tell them to come back tomorrow when conditions can be properly assessed. No guessing, no false optimism.
 - timingAdvice: "Check back tomorrow" — nothing more specific.`
 
+  const nextTideStr = (() => {
+    const nh = surfData.tides?.next_high
+    const nl = surfData.tides?.next_low
+    if (nh && nl) {
+      const nextIsHigh = new Date(nh.timestamp) < new Date(nl.timestamp)
+      return nextIsHigh
+        ? `next high at ${nh.time} (${nh.height}ft)`
+        : `next low at ${nl.time} (${nl.height}ft)`
+    }
+    if (nh) return `next high at ${nh.time} (${nh.height}ft)`
+    if (nl) return `next low at ${nl.time} (${nl.height}ft)`
+    return null
+  })()
+
   return `You are a ${ctx.voiceDescriptor}. Write a 2-paragraph surf report for ${ctx.locationName}. Be honest — don't oversell poor surf.
 
 LOCAL KNOWLEDGE FOR THIS SPOT:
@@ -173,7 +193,7 @@ CURRENT CONDITIONS:
 • Wave Period: ${surfData.details.wave_period_sec} seconds
 • Swell Direction: ${surfData.details.swell_direction_deg}° (${swellDirection})
 • Wind: ${windMph} mph ${windDirection}
-• Tide: ${surfData.details.tide_state} (${surfData.details.tide_height_ft}ft)
+• Tide: ${surfData.details.tide_state} (${surfData.details.tide_height_ft}ft${nextTideStr ? ` — ${nextTideStr}` : ''})
 • Water Temp: ${surfData.weather.water_temperature_f}°F
 • Weather: ${surfData.weather.weather_description}
 • Overall Score: ${surfData.score}/100
@@ -182,7 +202,7 @@ CURRENT CONDITIONS:
 • Local Time: ${localTime}
 • Session Status: ${viabilityNote}
 ${viabilityInstructions}
-NOTE: The raw numbers above are already shown to the user as data cards. The paragraphs below should interpret and contextualise using the local knowledge above — not restate the same figures.
+NOTE: Do not restate raw figures verbatim in prose (wave height, period, temperature, wind speed, etc.) — interpret and contextualise what they mean for the surf experience instead.
 
 WRITE EXACTLY 2 PARAGRAPHS:
 
@@ -190,7 +210,7 @@ WRITE EXACTLY 2 PARAGRAPHS:
 Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy, onshore/offshore effect. Use your local knowledge of this break to make it specific and accurate. Weave in how the tide and water temp affect the experience.
 
 **Paragraph 2 - Context & Vibe** (3-4 sentences):
-The app already shows the user their board recommendation, wetsuit, and top spots as separate UI elements — do NOT repeat those specifics here. Instead give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
+Give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
 
 TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
 }
