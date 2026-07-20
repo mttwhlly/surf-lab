@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 interface SurfReport {
   id: string;
   timestamp: string;
@@ -30,8 +32,11 @@ interface SurfReportCardProps {
 }
 
 export function SurfReportCard({ report, loading }: SurfReportCardProps) {
-  const formatTimeAgo = (timestamp: string) => {
-    const reportTime = new Date(timestamp);
+  const [formattedTime, setFormattedTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!report?.timestamp) return;
+    const reportTime = new Date(report.timestamp);
     const now = new Date();
     const isToday =
       reportTime.getFullYear() === now.getFullYear() &&
@@ -40,8 +45,8 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
     const datePart = isToday
       ? 'Today'
       : reportTime.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    return datePart + ' @ ' + reportTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+    setFormattedTime(datePart + ' @ ' + reportTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  }, [report?.timestamp]);
 
   // Don't render anything if loading and no report
   if (loading && !report) {
@@ -99,7 +104,7 @@ export function SurfReportCard({ report, loading }: SurfReportCardProps) {
   return (
 
         <div className="prose prose-lg mb-6">
-            <pre className="text-center pt-4 pb-8 uppercase text-gray-500 tracking-wide">{formatTimeAgo(report?.timestamp || '')}</pre>
+            <pre className="text-center pt-4 pb-8 uppercase text-gray-500 tracking-wide">{formattedTime ?? ''}</pre>
           <p className="text-gray-800 leading-relaxed text-2xl md:text-3xl whitespace-pre-wrap">
             {report?.report || 'Loading surf report...'}
           </p>
