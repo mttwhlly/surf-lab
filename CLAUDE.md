@@ -17,7 +17,7 @@ There are no automated tests in this project.
 
 ## Architecture
 
-This is a Next.js 14 app (App Router) that delivers AI-generated surf reports for St. Augustine, FL. The live site is `canisurf.today`.
+This is a Next.js 14 app (App Router) that delivers AI-generated surf reports for St. Augustine, FL. The live site is `surf-report-rouge.vercel.app` (previously `canisurf.today`, now inactive).
 
 ### Data Flow
 
