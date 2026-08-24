@@ -11,19 +11,18 @@ on:
 jobs:
   generate-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     steps:
-      - name: Generate surf report
+      - name: Generate surf reports (all locations)
         run: |
           RESPONSE_FILE=$(mktemp)
 
           HTTP_CODE=$(curl -s -w "%{http_code}" \
-            --max-time 60 \
+            --max-time 120 \
             --retry 2 \
             --retry-delay 5 \
-            -H "Content-Type: application/json" \
-            -X POST "${{ secrets.BUN_SERVICE_URL }}/cron/generate-fresh-report" \
-            -d "{\"cronSecret\": \"${{ secrets.CRON_SECRET }}\", \"vercelUrl\": \"${{ secrets.VERCEL_URL }}\"}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -X GET "${{ secrets.VERCEL_URL }}/api/admin/request-forecast" \
             -o "$RESPONSE_FILE")
 
           echo "HTTP Response: $HTTP_CODE"

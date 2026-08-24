@@ -4,7 +4,7 @@ import { LOCATIONS } from '@/lib/locations';
 
 const sql = neon(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || '');
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
