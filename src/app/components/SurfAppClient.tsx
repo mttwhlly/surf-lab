@@ -197,6 +197,29 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             {', however, it can make mistakes so always check conditions yourself before paddling out.'}
           </p>
         </div>
+
+        <div className="mx-auto max-w-3xl w-full px-4 mt-4 text-center">
+          <p className="text-xs font-mono text-gray-400">
+            {'Built by '}
+            <a
+              href="https://mattwhalley.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors"
+            >
+              Matt Whalley
+            </a>
+            {' · '}
+            <a
+              href="https://github.com/mttwhlly/surf-lab"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors"
+            >
+              source on GitHub
+            </a>
+          </p>
+        </div>
       </motion.div>
 
       {/* Transparent scrim captures outside clicks for any open popover */}
