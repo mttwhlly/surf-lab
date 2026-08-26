@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { LOCATIONS } from '@/lib/locations';
 
-const sql = neon(process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || '');
-
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+
+  const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    return NextResponse.json({ error: 'Server configuration error: missing database connection string' }, { status: 500 });
+  }
+  const sql = neon(databaseUrl);
 
   try {
     console.log('🕐 CRON JOB STARTED (multi-location):', new Date().toISOString());
