@@ -33,6 +33,22 @@ export function ensureInitialized(): Promise<void> {
   return initPromise;
 }
 
+let locationRequestsInitPromise: Promise<void> | null = null;
+export function ensureLocationRequestsTable(): Promise<void> {
+  if (!locationRequestsInitPromise) {
+    locationRequestsInitPromise = sql`
+      CREATE TABLE IF NOT EXISTS location_requests (
+        id TEXT PRIMARY KEY,
+        spot_name TEXT NOT NULL,
+        city_state TEXT NOT NULL,
+        email TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `.then(() => undefined);
+  }
+  return locationRequestsInitPromise;
+}
+
 // Initialize database with optimized indexes
 export async function initializeDatabase() {
   try {
@@ -65,7 +81,7 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_surf_reports_cleanup
       ON surf_reports(location, created_at)
     `;
-    
+
     console.log('✅ Database initialized with fixed indexes');
   } catch (error) {
     console.error('❌ Error initializing database:', error);
@@ -196,6 +212,19 @@ export async function cleanupOldReports(retentionHours: number = 24): Promise<nu
     console.error('❌ Error cleaning up old reports:', error);
     return 0;
   }
+}
+
+// NEW: Save a "suggest a spot" location request
+export async function saveLocationRequest(request: {
+  id: string;
+  spotName: string;
+  cityState: string;
+  email?: string | null;
+}): Promise<void> {
+  await sql`
+    INSERT INTO location_requests (id, spot_name, city_state, email)
+    VALUES (${request.id}, ${request.spotName}, ${request.cityState}, ${request.email ?? null})
+  `;
 }
 
 // NEW: Get cache statistics for monitoring

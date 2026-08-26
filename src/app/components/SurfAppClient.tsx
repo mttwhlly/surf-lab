@@ -46,6 +46,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const [isStandalone, setIsStandalone] = useState(false);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [suggestState, setSuggestState] = useState<'idle' | 'form' | 'submitting' | 'done'>('idle');
+  const [suggestSpotName, setSuggestSpotName] = useState('');
+  const [suggestCityState, setSuggestCityState] = useState('');
+  const [suggestEmail, setSuggestEmail] = useState('');
+  const [suggestHoneypot, setSuggestHoneypot] = useState('');
 
   const { report: surfReport, loading: reportLoading, error: reportError } =
     useSurfReportOptimized({ initialData: initialReport, locationSlug });
@@ -65,6 +70,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, sourcesOpen]);
+
+  useEffect(() => {
+    if (!open) resetSuggestForm();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     setIsStandalone(
@@ -131,6 +141,37 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     localStorage.setItem(STORAGE_KEY, slug);
     setOpen(false);
     router.push(`/${slug}`);
+  }
+
+  function resetSuggestForm() {
+    setSuggestState('idle');
+    setSuggestSpotName('');
+    setSuggestCityState('');
+    setSuggestEmail('');
+    setSuggestHoneypot('');
+  }
+
+  async function handleSuggestSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (suggestState === 'submitting' || !suggestSpotName.trim() || !suggestCityState.trim()) return;
+
+    setSuggestState('submitting');
+    try {
+      const res = await fetch('/api/location-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spotName: suggestSpotName.trim(),
+          cityState: suggestCityState.trim(),
+          email: suggestEmail.trim() || undefined,
+          company: suggestHoneypot,
+        }),
+      });
+      if (!res.ok) throw new Error('Request failed');
+      setSuggestState('done');
+    } catch {
+      setSuggestState('form');
+    }
   }
 
   return (
@@ -273,6 +314,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             <AnimatePresence>
               {open && (
                 <motion.div
+                  layout
                   className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
                   style={{ transformOrigin: 'bottom left', minWidth: '100%' }}
                   initial={{ opacity: 0, scale: 0.92, y: 8 }}
@@ -308,6 +350,77 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                       </motion.button>
                     ))}
                   </motion.div>
+
+                  <div className="border-t border-gray-100">
+                    {suggestState === 'idle' && (
+                      <button
+                        onClick={() => setSuggestState('form')}
+                        className="w-full text-left px-4 py-2.5 text-sm font-mono text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors whitespace-nowrap flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Suggest a spot
+                      </button>
+                    )}
+
+                    {(suggestState === 'form' || suggestState === 'submitting') && (
+                      <form onSubmit={handleSuggestSubmit} className="w-64 px-4 py-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            autoFocus
+                            type="text"
+                            required
+                            value={suggestSpotName}
+                            onChange={(e) => setSuggestSpotName(e.target.value)}
+                            placeholder="Spot name"
+                            className="min-w-0 flex-1 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          />
+                          <button
+                            type="submit"
+                            disabled={suggestState === 'submitting'}
+                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            aria-label="Submit spot suggestion"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 2 11 13" />
+                              <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                            </svg>
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={suggestCityState}
+                          onChange={(e) => setSuggestCityState(e.target.value)}
+                          placeholder="City, State"
+                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                        />
+                        <input
+                          type="email"
+                          value={suggestEmail}
+                          onChange={(e) => setSuggestEmail(e.target.value)}
+                          placeholder="Email (optional)"
+                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                        />
+                        <input
+                          type="text"
+                          value={suggestHoneypot}
+                          onChange={(e) => setSuggestHoneypot(e.target.value)}
+                          tabIndex={-1}
+                          autoComplete="off"
+                          aria-hidden="true"
+                          className="hidden"
+                        />
+                      </form>
+                    )}
+
+                    {suggestState === 'done' && (
+                      <div className="px-4 py-2.5 text-sm font-mono text-gray-500 whitespace-nowrap">
+                        Got it — thanks!
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

@@ -49,7 +49,7 @@ The hook is configured with aggressive caching (`staleTime: 30m`, no auto-refetc
 
 ### Database
 
-Neon PostgreSQL (`@neondatabase/serverless`). Single table: `surf_reports`. All DB functions are in `src/app/lib/db.ts`. The `getCachedReport` function fetches the most recent row for a location regardless of `cached_until` — the 8-hour staleness check is done in the route handler.
+Neon PostgreSQL (`@neondatabase/serverless`). Two tables: `surf_reports` and `location_requests` (spot suggestions from the "Suggest a spot" form). All DB functions are in `src/app/lib/db.ts`. The `getCachedReport` function fetches the most recent row for a location regardless of `cached_until` — the 8-hour staleness check is done in the route handler.
 
 ### Environment variables required
 
@@ -60,6 +60,7 @@ Neon PostgreSQL (`@neondatabase/serverless`). Single table: `surf_reports`. All 
 | `BUN_API_SECRET` | Auth token sent to Bun service |
 | `CRON_SECRET` | Bearer token required by `/api/admin/request-forecast` |
 | `NEXT_PUBLIC_API_URL` | Base URL for internal self-calls (optional, falls back to host header) |
+| `RESEND_API_KEY` | Sends the "suggest a spot" notification email via Resend (`/api/location-request`) |
 
 ### What's in the codebase but not active
 
