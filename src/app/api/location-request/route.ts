@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 import { ensureLocationRequestsTable, saveLocationRequest } from '@/lib/db';
 
 const NOTIFY_EMAIL = 'matt@mattwhalley.com';
-const FROM_EMAIL = 'notifications@mattwhalley.com';
+const FROM_EMAIL = 'onboarding@resend.com';
 
 export async function POST(request: NextRequest) {
   let body: { spotName?: string; cityState?: string; email?: string; company?: string };
@@ -40,12 +40,16 @@ export async function POST(request: NextRequest) {
   if (apiKey) {
     try {
       const resend = new Resend(apiKey);
-      await resend.emails.send({
+      const result = await resend.emails.send({
         from: FROM_EMAIL,
         to: NOTIFY_EMAIL,
         subject: `New spot suggestion: ${spotName}`,
         text: `Spot: ${spotName}\nLocation: ${cityState}\nEmail: ${email || '(not provided)'}`,
       });
+      // The Resend SDK returns { data, error } instead of throwing on API errors
+      if (result.error) {
+        console.error('❌ Resend API returned an error:', JSON.stringify(result.error));
+      }
     } catch (error) {
       // Email is a notification, not the record of truth — the DB row above already succeeded
       console.error('❌ Error sending location request email:', error);
