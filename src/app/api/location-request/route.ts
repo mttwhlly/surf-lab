@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 import { ensureLocationRequestsTable, saveLocationRequest } from '@/lib/db';
 
 const NOTIFY_EMAIL = 'matt@mattwhalley.com';
-const FROM_EMAIL = 'onboarding@resend.com';
+const FROM_EMAIL = 'notifications@mattwhalley.com';
 
 export async function POST(request: NextRequest) {
   let body: { spotName?: string; cityState?: string; email?: string; company?: string };
