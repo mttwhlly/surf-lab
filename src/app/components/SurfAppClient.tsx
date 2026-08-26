@@ -366,28 +366,15 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
 
                     {(suggestState === 'form' || suggestState === 'submitting') && (
                       <form onSubmit={handleSuggestSubmit} className="w-64 px-4 py-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            autoFocus
-                            type="text"
-                            required
-                            value={suggestSpotName}
-                            onChange={(e) => setSuggestSpotName(e.target.value)}
-                            placeholder="Spot name"
-                            className="min-w-0 flex-1 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
-                          />
-                          <button
-                            type="submit"
-                            disabled={suggestState === 'submitting'}
-                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                            aria-label="Submit spot suggestion"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M22 2 11 13" />
-                              <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-                            </svg>
-                          </button>
-                        </div>
+                        <input
+                          autoFocus
+                          type="text"
+                          required
+                          value={suggestSpotName}
+                          onChange={(e) => setSuggestSpotName(e.target.value)}
+                          placeholder="Spot name"
+                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                        />
                         <input
                           type="text"
                           required
@@ -412,6 +399,19 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                           aria-hidden="true"
                           className="hidden"
                         />
+                        <div className="flex justify-end">
+                          <button
+                            type="submit"
+                            disabled={suggestState === 'submitting'}
+                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            aria-label="Submit spot suggestion"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 2 11 13" />
+                              <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                            </svg>
+                          </button>
+                        </div>
                       </form>
                     )}
 
