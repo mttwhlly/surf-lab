@@ -383,7 +383,7 @@ async function handleRequest(req: Request): Promise<Response> {
   if (method === 'GET' && url.pathname === '/health') {
     return jsonResponse({
       status: 'ok',
-      service: 'Can I Surf Today?',
+      service: 'Swells',
       timestamp: new Date().toISOString(),
       runtime: 'Bun',
       version: Bun.version,
@@ -516,7 +516,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
 const port = parseInt(process.env.PORT || '3000')
 
-console.log(`🚀 Can I Surf Today? (multi-location) starting on port ${port}`)
+console.log(`🚀 Swells (multi-location) starting on port ${port}`)
 console.log(`⚡ Runtime: Bun ${Bun.version}`)
 
 serve({

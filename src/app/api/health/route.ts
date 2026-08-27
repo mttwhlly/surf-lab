@@ -5,7 +5,7 @@ export async function GET() {
     return NextResponse.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      service: 'Can I Surf Today?',
+      service: 'Swells',
       version: '2.0.0',
       environment: process.env.NODE_ENV || 'development'
     });

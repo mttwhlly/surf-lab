@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const condition = extractConditionFromReport(surfReport.report);
     const windSpeed = Math.round(surfReport.conditions.wind_speed_kts);
     const waterTemp = Math.round(surfReport.conditions.water_temperature_f || 72);
-    const title = `${condition} Surf - ${waveHeight}ft waves | Can I Surf Today?`;
+    const title = `${condition} Surf - ${waveHeight}ft waves | Swells`;
     const description = `${condition} surf conditions at ${location.name}! ${waveHeight}ft waves, ${windSpeed}kt winds, ${waterTemp}°F water. Real-time surf report updated 4 times daily.`;
     const ogImageUrl = `/api/og?height=${waveHeight}&condition=${encodeURIComponent(condition)}&wind=${windSpeed}&temp=${waterTemp}`;
 
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `Can I Surf Today? - ${location.name}`,
+    title: `Swells - ${location.name}`,
     description: `Real-time AI-powered surf report for ${location.name}. Get current wave conditions, wind data, and surf recommendations updated 4 times daily.`,
   };
 }

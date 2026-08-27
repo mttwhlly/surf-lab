@@ -21,8 +21,8 @@ const baseUrl = process.env.NEXT_PUBLIC_API_URL ||
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: 'Can I Surf Today?',
-    template: '%s | Can I Surf Today?'
+    default: 'Swells',
+    template: '%s | Swells'
   },
   description: 'Real-time AI-powered surf reports for US surf spots — St. Augustine, Rockaway Beach, Huntington Beach, and more. Updated 4 times daily.',
   keywords: [
@@ -38,12 +38,12 @@ export const metadata: Metadata = {
     'Oahu surf',
     'Florida surf conditions',
   ],
-  
+
   // Basic metadata
-  applicationName: 'Can I Surf Today?',
-  authors: [{ name: 'Can I Surf Today' }],
-  creator: 'Can I Surf Today',
-  publisher: 'Can I Surf Today',
+  applicationName: 'Swells',
+  authors: [{ name: 'Swells' }],
+  creator: 'Swells',
+  publisher: 'Swells',
   formatDetection: {
     email: false,
     address: false,
@@ -55,22 +55,22 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: baseUrl,
-    title: 'Can I Surf Today?',
+    title: 'Swells',
     description: 'Real-time AI-powered surf reports for US surf spots. Current waves, wind, and surf recommendations updated 4 times daily.',
-    siteName: 'Can I Surf Today?',
+    siteName: 'Swells',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Can I Surf Today? - St. Augustine surf conditions with wave and weather data',
+        alt: 'Swells - St. Augustine surf conditions with wave and weather data',
         type: 'image/png',
       },
       {
         url: '/og-image-square.png',
         width: 1200,
         height: 1200,
-        alt: 'Can I Surf Today? logo with wave graphics',
+        alt: 'Swells logo with wave graphics',
         type: 'image/png',
       }
     ],
@@ -79,14 +79,14 @@ export const metadata: Metadata = {
   // Twitter metadata
   twitter: {
     card: 'summary_large_image',
-    title: 'Can I Surf Today?',
+    title: 'Swells',
     description: 'Real-time AI surf reports for US surf spots. Current waves, wind, and surf recommendations updated 4 times daily.',
-    site: '@canisurftoday', // Replace with your Twitter handle if you have one
-    creator: '@canisurftoday',
+    site: '@swellssurf', // Replace with your Twitter handle if you have one
+    creator: '@swellssurf',
     images: [
       {
         url: '/twitter-image.png',
-        alt: 'Can I Surf Today? - St. Augustine surf conditions',
+        alt: 'Swells - St. Augustine surf conditions',
         width: 1200,
         height: 600,
       }
@@ -179,7 +179,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              "name": "Can I Surf Today?",
+              "name": "Swells",
               "description": "Real-time AI-powered surf report for St. Augustine, Florida",
               "url": "/",
               "applicationCategory": "WeatherApplication",
@@ -191,7 +191,7 @@ export default function RootLayout({
               },
               "author": {
                 "@type": "Organization",
-                "name": "Can I Surf Today"
+                "name": "Swells"
               },
               "geo": {
                 "@type": "GeoCoordinates",

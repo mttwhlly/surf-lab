@@ -48,7 +48,7 @@ export function LocationGate() {
     >
       <Image
         src="/wave-logo.svg"
-        alt="Can I Surf Today? Logo"
+        alt="Swells Logo"
         width={96}
         height={96}
         priority

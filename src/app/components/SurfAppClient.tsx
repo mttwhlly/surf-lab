@@ -58,9 +58,9 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   useEffect(() => {
     if (surfReport && !reportLoading) {
       const condition = extractConditionFromReport(surfReport.report);
-      document.title = `${condition} Surf - ${surfReport.conditions.wave_height_ft}ft waves | Can I Surf Today?`;
+      document.title = `${condition} Surf - ${surfReport.conditions.wave_height_ft}ft waves | Swells`;
     } else if (!reportLoading) {
-      document.title = `Can I Surf Today? - ${locationName}`;
+      document.title = `Swells - ${locationName}`;
     }
   }, [surfReport, reportLoading, locationName]);
 
@@ -183,7 +183,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
         <div className="mt-8">
-          <Image src="/wave-logo.svg" alt="Can I Surf Today? Logo" width={64} height={64} priority />
+          <Image src="/wave-logo.svg" alt="Swells Logo" width={64} height={64} priority />
         </div>
 
         <div className="mt-6 px-4 max-w-3xl w-full">

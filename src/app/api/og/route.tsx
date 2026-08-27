@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
               color: '#0077cc',
               marginBottom: '10px'
             }}>
-              🌊 Can I Surf Today?
+              🌊 Swells
             </div>
             <div style={{ 
               fontSize: '28px', 

@@ -1,4 +1,4 @@
-# Can I Surf Today?
+# Swells
 
 A clean, minimal surf forecasting application that provides AI-generated surf reports for St. Augustine, Florida. Built with Next.js, TypeScript, and powered by OpenAI to deliver conversational surf reports in the voice of a local surfer.
 
