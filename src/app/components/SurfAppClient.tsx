@@ -257,7 +257,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
               rel="noopener noreferrer"
               className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors"
             >
-              source on GitHub
+              view source
             </a>
           </p>
         </div>
