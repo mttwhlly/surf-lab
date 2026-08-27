@@ -16,7 +16,7 @@ const lacquer = Lacquer({
 // Get the base URL for absolute URLs in metadata
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
                process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-               'https://canisurf.today';
+               'https://swells.surf';
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
