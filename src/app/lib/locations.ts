@@ -33,7 +33,7 @@ export const LOCATIONS: Location[] = [
     timezone: 'America/New_York',
     coastFacingDeg: 90,
     bestSpots: ['Spanish River Park', 'Red Reef Park', 'Boca Inlet South Jetty'],
-    localKnowledge: `Southeast-facing stretch of beach break. Very tide-sensitive — low to mid rising is best on most peaks. The Boca Inlet jetties focus swell and create sandbars on the south side, often the best setup in the area. Summer is mostly flat; fall and spring can bring SE swell from tropical systems. Winter NE swells lose energy working down the coast and often arrive soft and disorganised. Seagrass patches near shore can grab fins at low tide. Offshore on W–NW winds. Rip currents common near the inlet — respect the hazard.`,
+    localKnowledge: `East-facing stretch of beach break. Very tide-sensitive — low to mid rising is best on most peaks. The Boca Inlet jetties focus swell and create sandbars on the south side, often the best setup in the area. Summer is mostly flat; fall and spring can bring SE swell from tropical systems. Winter NE swells lose energy working down the coast and often arrive soft and disorganised. Seagrass patches near shore can grab fins at low tide. Offshore on W–NW winds. Rip currents common near the inlet — respect the hazard.`,
     voiceDescriptor: `South Florida surfer who keeps expectations realistic but celebrates the spot's potential. Comfortable recommending when to wait for a better swell, but genuinely stoked when conditions deliver`,
   },
   {
@@ -43,9 +43,9 @@ export const LOCATIONS: Location[] = [
     lon: -70.27,
     noaaStationId: '8418150',
     timezone: 'America/New_York',
-    coastFacingDeg: 90,
+    coastFacingDeg: 135,
     bestSpots: ['Higgins Beach', 'Scarborough Beach', 'Pine Point'],
-    localKnowledge: `North Atlantic cold-water beach break. Prime season is September through May. NE groundswell from winter nor'easters and Gulf of Maine fetch can deliver hollow, powerful waves. Offshore on S–SW winds. Tidal range is extreme (10–12ft) — timing the tide is critical; low to mid tide usually produces the best peaks over the sandbars. High tide often floods the beach entirely. Water is cold year-round: 5/4mm suit with hood and gloves in winter (38–50°F), at least a 3/2mm spring through fall (55–65°F). Hurricane season (August–October) brings some of the best long-period groundswells. Fog is common — check visibility before paddling out.`,
+    localKnowledge: `North Atlantic cold-water beach break, facing southeast. Prime season is September through May. NE groundswell from winter nor'easters and Gulf of Maine fetch can deliver hollow, powerful waves. Offshore on NW winds. Tidal range is extreme (10–12ft) — timing the tide is critical; low to mid tide usually produces the best peaks over the sandbars. High tide often floods the beach entirely. Water is cold year-round: 5/4mm suit with hood and gloves in winter (38–50°F), at least a 3/2mm spring through fall (55–65°F). Hurricane season (August–October) brings some of the best long-period groundswells. Fog is common — check visibility before paddling out.`,
     voiceDescriptor: `Maine surfer — stoic, no-nonsense, comfortable in cold water. Respects the ocean's power and calls conditions accurately. Gets quietly stoked when it goes off, matter-of-fact about the cold`,
   },
   {
@@ -55,9 +55,9 @@ export const LOCATIONS: Location[] = [
     lon: -79.94,
     noaaStationId: '8665530',
     timezone: 'America/New_York',
-    coastFacingDeg: 90,
+    coastFacingDeg: 155,
     bestSpots: ['The Washout', 'Folly Beach Pier', 'Center Street'],
-    localKnowledge: `Atlantic-facing barrier island beach break near Charleston. Works best on NE to E swell, 3–8ft. The Washout on the west end is the most consistent spot — a natural channel concentrates swell and often produces the cleanest peaks with the most push. Offshore on W–SW winds (which are offshore at the Washout due to its orientation). Significant tidal range (5–6ft) — low to mid rising is usually best. Summer is almost completely flat; fall hurricane season is the best time of year. Water temp is comfortable June–November (70–82°F), cooler spring and winter (55–65°F).`,
+    localKnowledge: `Atlantic-facing barrier island beach break near Charleston, facing south-southeast. Works best on NE to E swell, 3–8ft. The Washout on the west end is the most consistent spot — a natural channel concentrates swell and often produces the cleanest peaks with the most push. Offshore on N–NW winds (which are offshore at the Washout due to its orientation). Significant tidal range (5–6ft) — low to mid rising is usually best. Summer is almost completely flat; fall hurricane season is the best time of year. Water temp is comfortable June–November (70–82°F), cooler spring and winter (55–65°F).`,
     voiceDescriptor: `Charleston-area surfer — chill and unpretentious. Knows the spot's limitations and says so honestly, but gets properly stoked when the fall swells show up. Straightforward about when to skip it`,
   },
   {
