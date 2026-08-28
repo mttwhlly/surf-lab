@@ -34,8 +34,7 @@ function corsResponse() {
   return new Response(null, { status: 204, headers: corsHeaders })
 }
 
-function getLocalTime(timezone: string): { hour: number; month: number; formatted: string } {
-  const now = new Date()
+function getLocalTime(timezone: string, now: Date = new Date()): { hour: number; month: number; formatted: string } {
   const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
   const hour = local.getHours() + local.getMinutes() / 60
   const month = local.getMonth()
@@ -44,8 +43,7 @@ function getLocalTime(timezone: string): { hour: number; month: number; formatte
 }
 
 // Approximate sunrise/sunset based on latitude and day of year (±15–20 min accuracy)
-function getDaylightWindow(lat: number, timezone: string): { rise: number; set: number } {
-  const now = new Date()
+function getDaylightWindow(lat: number, timezone: string, now: Date = new Date()): { rise: number; set: number } {
   const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
   const startOfYear = new Date(local.getFullYear(), 0, 0)
   const dayOfYear = Math.floor((local.getTime() - startOfYear.getTime()) / 86400000)
@@ -68,11 +66,11 @@ type SessionViability =
   | { viable: false; reason: 'night'; riseStr: string }
   | { viable: false; reason: 'lightning' }
 
-function getSessionViability(hour: number, lat: number, timezone: string, weatherDescription: string): SessionViability {
+function getSessionViability(hour: number, lat: number, timezone: string, weatherDescription: string, now: Date = new Date()): SessionViability {
   if (/thunder|lightning|tropical storm|hurricane/i.test(weatherDescription)) {
     return { viable: false, reason: 'lightning' }
   }
-  const { rise, set } = getDaylightWindow(lat, timezone)
+  const { rise, set } = getDaylightWindow(lat, timezone, now)
   if (hour < rise || hour >= set) {
     const riseH = Math.floor(rise)
     const riseM = Math.round((rise % 1) * 60)
@@ -129,7 +127,7 @@ function getFallbackTimingAdvice(tideState: string, viability: SessionViability)
   return 'Mid to outgoing tide usually favours the local breaks — check tide charts for timing'
 }
 
-interface LocationContext {
+export interface LocationContext {
   locationName: string;
   localKnowledge: string;
   voiceDescriptor: string;
@@ -138,12 +136,12 @@ interface LocationContext {
   timezone: string;
 }
 
-function createDetailedSurfPrompt(surfData: any, ctx: LocationContext): string {
+export function createDetailedSurfPrompt(surfData: any, ctx: LocationContext, now: Date = new Date()): string {
   const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
   const swellDirection = getCompassDirection(surfData.details.swell_direction_deg)
   const windDirection = getCompassDirection(surfData.details.wind_direction_deg)
-  const { hour, month, formatted: localTime } = getLocalTime(ctx.timezone)
-  const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description)
+  const { hour, month, formatted: localTime } = getLocalTime(ctx.timezone, now)
+  const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description, now)
 
   const viabilityNote = viability.viable
     ? 'Surfable now'
@@ -215,11 +213,11 @@ Give the reasoning and local context: why certain spots work or don't in these c
 TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
 }
 
-async function generateDetailedSurfReport(surfData: any, ctx: LocationContext) {
+export async function generateDetailedSurfReport(surfData: any, ctx: LocationContext, now: Date = new Date()) {
   console.log(`🤖 Generating surf report for ${ctx.locationName}...`)
 
   try {
-    const prompt = createDetailedSurfPrompt(surfData, ctx)
+    const prompt = createDetailedSurfPrompt(surfData, ctx, now)
 
     const { object: aiResponse } = await generateObject({
       model: anthropic('claude-haiku-4-5-20251001'),
@@ -284,8 +282,8 @@ async function generateDetailedSurfReport(surfData: any, ctx: LocationContext) {
     console.error(`❌ AI generation failed for ${ctx.locationName}:`, error)
 
     const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
-    const { hour } = getLocalTime(ctx.timezone)
-    const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description)
+    const { hour } = getLocalTime(ctx.timezone, now)
+    const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description, now)
     const fallbackReport = createEnhancedFallbackReport(surfData, windMph, ctx, viability)
 
     return {
@@ -514,24 +512,26 @@ async function handleRequest(req: Request): Promise<Response> {
   return jsonResponse({ error: 'Not found' }, 404)
 }
 
-const port = parseInt(process.env.PORT || '3000')
+if (import.meta.main) {
+  const port = parseInt(process.env.PORT || '3000')
 
-console.log(`🚀 Swells (multi-location) starting on port ${port}`)
-console.log(`⚡ Runtime: Bun ${Bun.version}`)
+  console.log(`🚀 Swells (multi-location) starting on port ${port}`)
+  console.log(`⚡ Runtime: Bun ${Bun.version}`)
 
-serve({
-  port,
-  async fetch(req) {
-    try {
-      return await handleRequest(req)
-    } catch (error) {
-      console.error('🚨 Request failed:', error)
-      return jsonResponse({
-        error: 'Internal error',
-        details: error instanceof Error ? error.message : String(error)
-      }, 500)
+  serve({
+    port,
+    async fetch(req) {
+      try {
+        return await handleRequest(req)
+      } catch (error) {
+        console.error('🚨 Request failed:', error)
+        return jsonResponse({
+          error: 'Internal error',
+          details: error instanceof Error ? error.message : String(error)
+        }, 500)
+      }
     }
-  }
-})
+  })
 
-console.log(`✅ Bun server running at http://localhost:${port}`)
+  console.log(`✅ Bun server running at http://localhost:${port}`)
+}
