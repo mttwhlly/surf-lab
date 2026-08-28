@@ -4,8 +4,8 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
 const surfReportSchema = z.object({
-  conditionsAnalysis: z.string().min(120).describe("First paragraph: Current wave, wind, and tide conditions with analysis"),
-  recommendationsAndOutlook: z.string().min(100).describe("Second paragraph: Spot recommendations, gear advice, and bottom line"),
+  conditionsAnalysis: z.string().min(120).describe("Paragraph 1 of the surf report — follow the prompt's angle and structure instructions exactly, do not default to a generic conditions-summary opener"),
+  recommendationsAndOutlook: z.string().min(100).describe("Paragraph 2 of the surf report — follow the prompt's angle and structure instructions exactly, do not restate paragraph 1"),
 
   recommendations: z.object({
     boardType: z.string().describe("General board type recommendation (longboard, shortboard, funboard) - NO specific sizes"),
@@ -136,6 +136,24 @@ export interface LocationContext {
   timezone: string;
 }
 
+// Rotated per call (not per data) so two reports built from identical conditions —
+// same spot two days running, or different spots in the same batch — don't land on
+// the same lead sentence just because the underlying data is the same.
+const OPENING_ANGLES = [
+  'Lead with the verdict — worth paddling out or not — then explain why. Save the conditions breakdown for after.',
+  'Lead with what today demands from a surfer (board choice, positioning, patience) rather than a conditions recap.',
+  'Lead with the crowd and vibe you would find in the water right now, then work back to the conditions driving it.',
+  'Lead by naming the specific spot that matters most today and what is actually happening there.',
+  'Lead with a direct, second-person line about what paddling out would feel like in the first few minutes.',
+  'Lead with how today compares to what this spot normally does, using your local knowledge — not a plain conditions list.',
+  'Lead with whichever single factor (wind, period, or tide) is doing the most work today and build outward from it.',
+  'Lead with a blunt, one-line gut check on the swell before any analysis.',
+]
+
+function pickOpeningAngle(): string {
+  return OPENING_ANGLES[Math.floor(Math.random() * OPENING_ANGLES.length)]!
+}
+
 export function createDetailedSurfPrompt(surfData: any, ctx: LocationContext, now: Date = new Date()): string {
   const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
   const swellDirection = getCompassDirection(surfData.details.swell_direction_deg)
@@ -186,7 +204,7 @@ ${ctx.localKnowledge}
 RECOMMENDED SPOTS:
 ${ctx.bestSpots.join(', ')}
 
-CURRENT CONDITIONS:
+CURRENT CONDITIONS (raw data — reference in your own words, see NOTE below on the two hint lines):
 • Wave Height: ${surfData.details.wave_height_ft} feet
 • Wave Period: ${surfData.details.wave_period_sec} seconds
 • Swell Direction: ${surfData.details.swell_direction_deg}° (${swellDirection})
@@ -195,22 +213,26 @@ CURRENT CONDITIONS:
 • Water Temp: ${surfData.weather.water_temperature_f}°F
 • Weather: ${surfData.weather.weather_description}
 • Overall Score: ${surfData.score}/100
-• Wave Quality: ${getWaveQuality(surfData.details.wave_height_ft, surfData.details.wave_period_sec)}
-• Tide Context: ${getTideContext(surfData.details.tide_state)}
+• Wave Quality (hint, not a sentence to reuse): ${getWaveQuality(surfData.details.wave_height_ft, surfData.details.wave_period_sec)}
+• Tide Context (hint, not a sentence to reuse): ${getTideContext(surfData.details.tide_state)}
 • Local Date: ${localDate}
 • Local Time: ${localTime}
 • Session Status: ${viabilityNote}
 ${viabilityInstructions}
 NOTE: Do not restate raw figures verbatim in prose (wave height, period, temperature, wind speed, etc.) — interpret and contextualise what they mean for the surf experience instead.
+NOTE: The "Wave Quality" and "Tide Context" lines above are internal hints describing what the numbers mean, not sentences to paraphrase or echo. Reach your own conclusion about the surf in your own words — do not restate their wording or sentence shape.
 NOTE: Do not state any date, day-of-week, season, or "time of year" framing, and do not claim conditions are typical/atypical for the season — unless it is directly supported by the data given above. If you reference the day or date, it must match Local Date exactly.
 
-WRITE EXACTLY 2 PARAGRAPHS:
+AVOID GENERIC OPENERS: Never start with "Right now we're looking at", "We're looking at", "Right now, we're looking at", or any close variant of that phrasing — it's the default surf-report cliché and every report should not sound the same.
+THIS CALL'S ANGLE: ${pickOpeningAngle()}
 
-**Paragraph 1 - Conditions Analysis** (3-4 sentences):
-Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy, onshore/offshore effect. Use your local knowledge of this break to make it specific and accurate. Weave in how the tide and water temp affect the experience.
+WRITE 2 PARAGRAPHS, roughly 70-120 words each (vary sentence count and length naturally — do not force a fixed number of sentences):
 
-**Paragraph 2 - Context & Vibe** (3-4 sentences):
-Give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
+**Paragraph 1 - Conditions Analysis**:
+Open using THIS CALL'S ANGLE above. Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy, onshore/offshore effect. Use your local knowledge of this break to make it specific and accurate. Weave in how the tide and water temp affect the experience.
+
+**Paragraph 2 - Context & Vibe**:
+Move forward, don't repeat — the reader already has paragraph 1's conditions read, so don't re-explain it in different words. Give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
 
 TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
 }
@@ -276,7 +298,7 @@ export async function generateDetailedSurfReport(surfData: any, ctx: LocationCon
         report_length: fullReport.length,
         word_count: fullReport.split(' ').length,
         paragraphs: 2,
-        prompt_version: '3.0',
+        prompt_version: '3.1',
       }
     }
 
@@ -330,7 +352,7 @@ export async function generateDetailedSurfReport(surfData: any, ctx: LocationCon
         report_length: fallbackReport.length,
         word_count: fallbackReport.split(' ').length,
         paragraphs: 2,
-        prompt_version: '3.0',
+        prompt_version: '3.1',
       }
     }
   }
