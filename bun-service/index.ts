@@ -34,12 +34,12 @@ function corsResponse() {
   return new Response(null, { status: 204, headers: corsHeaders })
 }
 
-function getLocalTime(timezone: string, now: Date = new Date()): { hour: number; month: number; formatted: string } {
+function getLocalTime(timezone: string, now: Date = new Date()): { hour: number; formatted: string; date: string } {
   const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
   const hour = local.getHours() + local.getMinutes() / 60
-  const month = local.getMonth()
   const formatted = local.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-  return { hour, month, formatted }
+  const date = local.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  return { hour, formatted, date }
 }
 
 // Approximate sunrise/sunset based on latitude and day of year (±15–20 min accuracy)
@@ -140,7 +140,7 @@ export function createDetailedSurfPrompt(surfData: any, ctx: LocationContext, no
   const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
   const swellDirection = getCompassDirection(surfData.details.swell_direction_deg)
   const windDirection = getCompassDirection(surfData.details.wind_direction_deg)
-  const { hour, month, formatted: localTime } = getLocalTime(ctx.timezone, now)
+  const { hour, formatted: localTime, date: localDate } = getLocalTime(ctx.timezone, now)
   const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description, now)
 
   const viabilityNote = viability.viable
@@ -197,10 +197,12 @@ CURRENT CONDITIONS:
 • Overall Score: ${surfData.score}/100
 • Wave Quality: ${getWaveQuality(surfData.details.wave_height_ft, surfData.details.wave_period_sec)}
 • Tide Context: ${getTideContext(surfData.details.tide_state)}
+• Local Date: ${localDate}
 • Local Time: ${localTime}
 • Session Status: ${viabilityNote}
 ${viabilityInstructions}
 NOTE: Do not restate raw figures verbatim in prose (wave height, period, temperature, wind speed, etc.) — interpret and contextualise what they mean for the surf experience instead.
+NOTE: Do not state any date, day-of-week, season, or "time of year" framing, and do not claim conditions are typical/atypical for the season — unless it is directly supported by the data given above. If you reference the day or date, it must match Local Date exactly.
 
 WRITE EXACTLY 2 PARAGRAPHS:
 
