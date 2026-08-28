@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCachedReport, saveReport, ensureInitialized } from '@/lib/db';
 import { getLocation, DEFAULT_LOCATION_SLUG, type Location } from '@/lib/locations';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const isDebug = request.headers.get('X-Debug') === 'true';
