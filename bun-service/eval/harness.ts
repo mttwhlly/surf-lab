@@ -26,7 +26,7 @@ interface MockConditions {
 const COAST_FACING_DEG: Record<string, number> = {
   'st-augustine': 90,
   'boca-raton': 90,
-  'higgins-beach': 90,
+  'higgins-beach': 135,
   'huntington-beach': 225,
 }
 
@@ -136,7 +136,7 @@ const CROSS_LOCATION_CONTEXTS: Array<{ slug: string; ctx: LocationContext }> = [
     slug: 'boca-raton',
     ctx: {
       locationName: 'Boca Raton, FL',
-      localKnowledge: `Southeast-facing stretch of beach break. Very tide-sensitive — low to mid rising is best on most peaks. The Boca Inlet jetties focus swell and create sandbars on the south side, often the best setup in the area. Summer is mostly flat; fall and spring can bring SE swell from tropical systems. Winter NE swells lose energy working down the coast and often arrive soft and disorganised. Seagrass patches near shore can grab fins at low tide. Offshore on W–NW winds. Rip currents common near the inlet — respect the hazard.`,
+      localKnowledge: `East-facing stretch of beach break. Very tide-sensitive — low to mid rising is best on most peaks. The Boca Inlet jetties focus swell and create sandbars on the south side, often the best setup in the area. Summer is mostly flat; fall and spring can bring SE swell from tropical systems. Winter NE swells lose energy working down the coast and often arrive soft and disorganised. Seagrass patches near shore can grab fins at low tide. Offshore on W–NW winds. Rip currents common near the inlet — respect the hazard.`,
       voiceDescriptor: `South Florida surfer who keeps expectations realistic but celebrates the spot's potential. Comfortable recommending when to wait for a better swell, but genuinely stoked when conditions deliver`,
       bestSpots: ['Spanish River Park', 'Red Reef Park', 'Boca Inlet South Jetty'],
       lat: 26.35,
@@ -147,7 +147,7 @@ const CROSS_LOCATION_CONTEXTS: Array<{ slug: string; ctx: LocationContext }> = [
     slug: 'higgins-beach',
     ctx: {
       locationName: 'Higgins Beach, ME',
-      localKnowledge: `North Atlantic cold-water beach break. Prime season is September through May. NE groundswell from winter nor'easters and Gulf of Maine fetch can deliver hollow, powerful waves. Offshore on S–SW winds. Tidal range is extreme (10–12ft) — timing the tide is critical; low to mid tide usually produces the best peaks over the sandbars. High tide often floods the beach entirely. Water is cold year-round: 5/4mm suit with hood and gloves in winter (38–50°F), at least a 3/2mm spring through fall (55–65°F). Hurricane season (August–October) brings some of the best long-period groundswells. Fog is common — check visibility before paddling out.`,
+      localKnowledge: `North Atlantic cold-water beach break, facing southeast. Prime season is September through May. NE groundswell from winter nor'easters and Gulf of Maine fetch can deliver hollow, powerful waves. Offshore on NW winds. Tidal range is extreme (10–12ft) — timing the tide is critical; low to mid tide usually produces the best peaks over the sandbars. High tide often floods the beach entirely. Water is cold year-round: 5/4mm suit with hood and gloves in winter (38–50°F), at least a 3/2mm spring through fall (55–65°F). Hurricane season (August–October) brings some of the best long-period groundswells. Fog is common — check visibility before paddling out.`,
       voiceDescriptor: `Maine surfer — stoic, no-nonsense, comfortable in cold water. Respects the ocean's power and calls conditions accurately. Gets quietly stoked when it goes off, matter-of-fact about the cold`,
       bestSpots: ['Higgins Beach', 'Scarborough Beach', 'Pine Point'],
       lat: 43.55,

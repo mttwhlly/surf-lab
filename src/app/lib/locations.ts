@@ -17,7 +17,7 @@ export const LOCATIONS: Location[] = [
     name: 'St. Augustine, FL',
     lat: 29.9,
     lon: -81.3,
-    noaaStationId: '8720587',
+    noaaStationId: '8720218',
     timezone: 'America/New_York',
     coastFacingDeg: 90,
     bestSpots: ['Vilano Beach', 'St. Augustine Pier', 'Crescent Beach'],
