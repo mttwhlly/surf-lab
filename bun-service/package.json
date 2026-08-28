@@ -6,7 +6,8 @@
   "scripts": {
     "start": "bun run index.ts",
     "dev": "bun --watch index.ts",
-    "type-check": "bun --no-install index.ts --dry-run"
+    "type-check": "bun --no-install index.ts --dry-run",
+    "eval": "bun run eval/harness.ts"
   },
   "dependencies": {
     "ai": "^4.3.19",
