@@ -20,7 +20,36 @@ interface MockConditions {
   score: number
 }
 
+// Mirrors isOffshoreWind/getWindDescription in src/app/api/surfability/route.ts so the
+// harness exercises the same ground-truth wind_direction_description the real prompt
+// gets in production (mocked surf data previously omitted it entirely).
+const COAST_FACING_DEG: Record<string, number> = {
+  'st-augustine': 90,
+  'boca-raton': 90,
+  'higgins-beach': 90,
+  'huntington-beach': 225,
+}
+
+function compassOf(degrees: number): string {
+  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+  return directions[Math.round(degrees / 22.5) % 16]!
+}
+
+function windDescriptionOf(windDirection: number, windSpeed: number, coastFacingDeg: number): string {
+  const offshoreCenter = (coastFacingDeg + 180) % 360
+  let diff = Math.abs(windDirection - offshoreCenter)
+  if (diff > 180) diff = 360 - diff
+  const offshore = diff <= 90
+  const windType = offshore ? 'offshore' : 'onshore'
+  const quality = offshore
+    ? (windSpeed < 5 ? 'glassy conditions' : windSpeed < 15 ? 'clean offshore conditions' : windSpeed < 25 ? 'strong offshore - may be difficult to paddle out' : 'very strong offshore - challenging conditions')
+    : (windSpeed < 5 ? 'light onshore - fairly clean' : windSpeed < 10 ? 'moderate onshore - some chop' : windSpeed < 20 ? 'strong onshore - choppy conditions' : 'very strong onshore - blown out')
+  return `${compassOf(windDirection)} ${windType} (${quality})`
+}
+
 function mockSurfData(locationSlug: string, locationName: string, c: MockConditions) {
+  const coastFacingDeg = COAST_FACING_DEG[locationSlug] ?? 90
   return {
     location: locationName,
     locationSlug,
@@ -31,6 +60,7 @@ function mockSurfData(locationSlug: string, locationName: string, c: MockConditi
       swell_direction_deg: c.swell_direction_deg,
       wind_speed_kts: c.wind_speed_kts,
       wind_direction_deg: c.wind_direction_deg,
+      wind_direction_description: windDescriptionOf(c.wind_direction_deg, c.wind_speed_kts, coastFacingDeg),
       tide_state: c.tide_state,
       tide_height_ft: c.tide_height_ft,
     },
@@ -80,6 +110,14 @@ const GOOD_DAY: MockConditions = {
 const LIGHTNING: MockConditions = {
   ...MEDIOCRE,
   weather_description: 'Thunderstorm',
+}
+
+// Repro for the reported bug: NE wind at St. Augustine (east-facing coast) is
+// onshore, but the model previously called it "offshore" when left to derive
+// onshore/offshore itself from local-knowledge phrasing.
+const NE_WIND_BUG_REPRO: MockConditions = {
+  ...MEDIOCRE,
+  wind_direction_deg: 45,
 }
 
 const CROSS_LOCATION_CONTEXTS: Array<{ slug: string; ctx: LocationContext }> = [
@@ -173,6 +211,10 @@ async function main() {
   await runOne('Normal daytime, good conditions', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, GOOD_DAY, DAYTIME_NOW)
   await runOne('Night (before sunrise)', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, MEDIOCRE, NIGHT_NOW)
   await runOne('Lightning / thunderstorm override', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, LIGHTNING, DAYTIME_NOW)
+
+  header('BUG REPRO: NE wind at St. Augustine must be called onshore, not offshore')
+  log('(St. Augustine faces east — coastFacingDeg 90 — so offshore wind blows from the W/NW, not the NE.)')
+  await runOne('St. Augustine — NE wind', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, NE_WIND_BUG_REPRO, DAYTIME_NOW)
 
   const outPath = `eval/output/${new Date().toISOString().replace(/[:.]/g, '-')}.txt`
   await Bun.write(outPath, lines.join('\n') + '\n')

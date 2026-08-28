@@ -187,7 +187,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         </div>
 
         <div className="mt-6 px-4 max-w-3xl w-full">
-          <SurfReportCard report={surfReport} loading={reportLoading} />
+          <SurfReportCard report={surfReport} loading={reportLoading} timezone={location?.timezone} />
           {reportError && <ErrorCard message={reportError} />}
         </div>
 

@@ -158,6 +158,7 @@ export function createDetailedSurfPrompt(surfData: any, ctx: LocationContext, no
   const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
   const swellDirection = getCompassDirection(surfData.details.swell_direction_deg)
   const windDirection = getCompassDirection(surfData.details.wind_direction_deg)
+  const windOnshoreOffshore = surfData.details.wind_direction_description ?? null
   const { hour, formatted: localTime, date: localDate } = getLocalTime(ctx.timezone, now)
   const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description, now)
 
@@ -208,7 +209,8 @@ CURRENT CONDITIONS (raw data — reference in your own words, see NOTE below on 
 • Wave Height: ${surfData.details.wave_height_ft} feet
 • Wave Period: ${surfData.details.wave_period_sec} seconds
 • Swell Direction: ${surfData.details.swell_direction_deg}° (${swellDirection})
-• Wind: ${windMph} mph ${windDirection}
+• Wind: ${windMph} mph ${windDirection}${windOnshoreOffshore ? `
+• Wind Effect (ground truth, already calculated from this coast's orientation — use this label as-is, do not recompute or contradict it from local knowledge or the compass direction): ${windOnshoreOffshore}` : ''}
 • Tide: ${surfData.details.tide_state} (${surfData.details.tide_height_ft}ft${nextTideStr ? ` — ${nextTideStr}` : ''})
 • Water Temp: ${surfData.weather.water_temperature_f}°F
 • Weather: ${surfData.weather.weather_description}
@@ -229,7 +231,7 @@ THIS CALL'S ANGLE: ${pickOpeningAngle()}
 WRITE 2 PARAGRAPHS, roughly 70-120 words each (vary sentence count and length naturally — do not force a fixed number of sentences):
 
 **Paragraph 1 - Conditions Analysis**:
-Open using THIS CALL'S ANGLE above. Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy, onshore/offshore effect. Use your local knowledge of this break to make it specific and accurate. Weave in how the tide and water temp affect the experience.
+Open using THIS CALL'S ANGLE above. Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy. For the onshore/offshore effect, use the Wind Effect ground-truth label given above verbatim in meaning (do not re-derive it from the raw wind compass direction or from local-knowledge phrases like "offshore on X winds" — those describe a different location's or spot's typical pattern and can mislead you on today's actual angle). Use your local knowledge of this break to make it specific and accurate otherwise. Weave in how the tide and water temp affect the experience.
 
 **Paragraph 2 - Context & Vibe**:
 Move forward, don't repeat — the reader already has paragraph 1's conditions read, so don't re-explain it in different words. Give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
