@@ -63,8 +63,11 @@ function getDaylightWindow(lat: number, timezone: string, now: Date = new Date()
 
 type SessionViability =
   | { viable: true }
-  | { viable: false; reason: 'night'; riseStr: string }
+  | { viable: false; reason: 'night'; riseStr: string; minutesToRise: number; isPreDawn: boolean }
   | { viable: false; reason: 'lightning' }
+
+// Within this many minutes of sunrise, it's "pre-dawn" (sky lightening) rather than "the middle of the night"
+const PRE_DAWN_WINDOW_MINUTES = 90
 
 function getSessionViability(hour: number, lat: number, timezone: string, weatherDescription: string, now: Date = new Date()): SessionViability {
   if (/thunder|lightning|tropical storm|hurricane/i.test(weatherDescription)) {
@@ -77,7 +80,10 @@ function getSessionViability(hour: number, lat: number, timezone: string, weathe
     const period = riseH < 12 ? 'AM' : 'PM'
     const displayH = riseH <= 12 ? riseH : riseH - 12
     const riseStr = `${displayH}:${riseM.toString().padStart(2, '0')} ${period}`
-    return { viable: false, reason: 'night', riseStr }
+    // Before sunrise, minutesToRise is straightforward. After sunset, the next sunrise
+    // is tomorrow's — approximate it as the same clock time, 24h later.
+    const minutesToRise = Math.round((hour < rise ? rise - hour : rise + 24 - hour) * 60)
+    return { viable: false, reason: 'night', riseStr, minutesToRise, isPreDawn: minutesToRise <= PRE_DAWN_WINDOW_MINUTES }
   }
   return { viable: true }
 }
@@ -119,6 +125,7 @@ function getBoardTypeRecommendation(waveHeight: number): string {
 function getFallbackTimingAdvice(tideState: string, viability: SessionViability): string {
   if (!viability.viable) {
     if (viability.reason === 'lightning') return 'Wait for the storm to clear completely before considering paddling out'
+    if (viability.isPreDawn) return `Check back once it's light (~${viability.riseStr}) for an accurate read on conditions`
     return 'Check back tomorrow for an accurate read on conditions'
   }
   if (tideState.includes('Rising')) return 'Session now — rising tide tends to clean up the waves'
@@ -166,7 +173,7 @@ export function createDetailedSurfPrompt(surfData: any, ctx: LocationContext, no
     ? 'Surfable now'
     : viability.reason === 'lightning'
       ? 'NOT SURFABLE — thunderstorm/lightning activity'
-      : `NOT SURFABLE NOW — nighttime (light returns ~${viability.riseStr})`
+      : `NOT SURFABLE NOW — ${viability.isPreDawn ? 'pre-dawn, still dark' : 'nighttime'} (light returns ~${viability.riseStr})`
 
   const viabilityInstructions = viability.viable ? '' : viability.reason === 'lightning'
     ? `
@@ -175,6 +182,14 @@ There is active lightning or thunderstorm activity. This overrides everything el
 - Lead paragraph 1 with a clear, direct safety warning: the ocean is UNSAFE during electrical activity. No hedging.
 - Paragraph 2 should describe what conditions will look like once the storm clears, and when to check back.
 - timingAdvice must tell the user to wait until the storm passes before considering the water.`
+    : viability.isPreDawn
+    ? `
+IMPORTANT — TIMING OVERRIDE:
+It is currently pre-dawn (still dark, but sunrise is only ~${viability.minutesToRise} minutes away at ${viability.riseStr}). Nobody's surfing yet, but this is NOT "the middle of the night" — do not use that phrase or imply it's late-night. Say it's early morning / not light enough yet / sunrise is close.
+- Do NOT attempt to describe or predict tomorrow's conditions — you have no forecast data, only a current snapshot that may not reflect what daylight will bring.
+- Paragraph 1: acknowledge it's still too dark to surf but sunrise is coming soon. If the user seems curious about conditions, you may briefly describe the CURRENT snapshot (not as a prediction).
+- Paragraph 2: keep it short. Tell them conditions can be properly assessed once it's light. No guessing, no false optimism.
+- timingAdvice: mention checking back once it's light, referencing the approximate sunrise time.`
     : `
 IMPORTANT — TIMING OVERRIDE:
 It is currently nighttime. Nobody surfs in the dark.
@@ -368,8 +383,12 @@ function createEnhancedFallbackReport(surfData: any, windMph: number, ctx: Locat
       return `${p1}\n\n${p2}`
     }
     const waveDesc = surfData.details.wave_height_ft >= 4 ? 'solid' : surfData.details.wave_height_ft >= 2 ? 'fun-sized' : 'small'
-    const p1 = `It's dark out — no surfing tonight at ${ctx.locationName}. If you're still curious, the current snapshot shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec}s from the ${surfData.details.swell_direction_compass || 'east'} with ${windMph} mph ${surfData.details.wind_direction_compass || 'variable'} winds, but that's right now — not a forecast for tomorrow.`
-    const p2 = `Check back tomorrow for an accurate read on conditions. Night surf isn't worth it, and neither is guessing.`
+    const p1 = viability.isPreDawn
+      ? `Still too dark to surf at ${ctx.locationName} — sunrise is around ${viability.riseStr}. If you're still curious, the current snapshot shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec}s from the ${surfData.details.swell_direction_compass || 'east'} with ${windMph} mph ${surfData.details.wind_direction_compass || 'variable'} winds, but that's right now — not a forecast for once it's light.`
+      : `It's dark out — no surfing tonight at ${ctx.locationName}. If you're still curious, the current snapshot shows ${waveDesc} ${surfData.details.wave_height_ft}ft waves at ${surfData.details.wave_period_sec}s from the ${surfData.details.swell_direction_compass || 'east'} with ${windMph} mph ${surfData.details.wind_direction_compass || 'variable'} winds, but that's right now — not a forecast for tomorrow.`
+    const p2 = viability.isPreDawn
+      ? `Check back once the sun's up (~${viability.riseStr}) for an accurate read on conditions. No guessing in the dark.`
+      : `Check back tomorrow for an accurate read on conditions. Night surf isn't worth it, and neither is guessing.`
     return `${p1}\n\n${p2}`
   }
 
