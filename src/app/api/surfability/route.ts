@@ -261,6 +261,16 @@ async function fetchMarineData(lat: number, lon: number, timezone: string) {
   throw new Error('All marine data sources failed - no real ocean data available');
 }
 
+// NOAA's datagetter returns timestamps as bare "YYYY-MM-DD HH:MM" strings with no
+// UTC offset. Requesting time_zone=gmt makes those strings unambiguous UTC clock
+// values, so they can be parsed into a correct absolute instant with parseNoaaGmtTimestamp
+// below. (The alternative, time_zone=lst_ldt, returns local Eastern time — but `new
+// Date(...)` on a UTC server then silently mis-reads those digits as UTC, shifting
+// every event by the EDT/EST offset and corrupting past/future comparisons.)
+function parseNoaaGmtTimestamp(t: string): Date {
+  return new Date(`${t.replace(' ', 'T')}Z`);
+}
+
 async function fetchTideData(stationId: string): Promise<TideData> {
   try {
     const today = new Date();
@@ -276,8 +286,8 @@ async function fetchTideData(stationId: string): Promise<TideData> {
       return `${year}${month}${day}`;
     };
 
-    const currentUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=${stationId}&product=water_level&datum=MLLW&time_zone=lst_ldt&units=english&application=SurfLab&format=json`;
-    const predictionsUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${formatDate(yesterday)}&end_date=${formatDate(tomorrow)}&station=${stationId}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=SurfLab&format=json`;
+    const currentUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=${stationId}&product=water_level&datum=MLLW&time_zone=gmt&units=english&application=SurfLab&format=json`;
+    const predictionsUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${formatDate(yesterday)}&end_date=${formatDate(tomorrow)}&station=${stationId}&product=predictions&datum=MLLW&time_zone=gmt&interval=hilo&units=english&application=SurfLab&format=json`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -306,12 +316,15 @@ async function fetchTideData(stationId: string): Promise<TideData> {
       const predictionsData = await predictionsRes.json();
       if (predictionsData.predictions?.length > 0) {
         const now = new Date();
-        const allPredictions = predictionsData.predictions.map((p: any) => ({
-          ...p,
-          time: new Date(p.t),
-          parsedHeight: parseFloat(p.v),
-          timestamp: p.t
-        }));
+        const allPredictions = predictionsData.predictions.map((p: any) => {
+          const time = parseNoaaGmtTimestamp(p.t);
+          return {
+            ...p,
+            time,
+            parsedHeight: parseFloat(p.v),
+            timestamp: time.toISOString()
+          };
+        });
 
         const pastPredictions = allPredictions.filter((p: any) => p.time < now);
         const futurePredictions = allPredictions.filter((p: any) => p.time >= now);
@@ -438,7 +451,7 @@ export async function GET(request: NextRequest) {
       if (!tideEvent) return null;
       const time = new Date(tideEvent.timestamp);
       return {
-        time: time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        time: time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: location.timezone }),
         height: Math.round(tideEvent.height * 10) / 10,
         timestamp: tideEvent.timestamp
       };
