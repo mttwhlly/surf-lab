@@ -36,4 +36,21 @@ export interface SurfReport {
     timing_advice?: string;
   };
   cached_until: string;
+
+  // Provenance — which tier actually produced this report. Absent on very old cached
+  // rows written before this field existed; treat that as the normal live-AI case.
+  generation_meta?: {
+    backend: string;
+    model: string;
+    report_length: number;
+    word_count: number;
+    paragraphs: number;
+    prompt_version: string;
+    validation_issues?: string[];
+  };
+
+  // Set only by the emergency cache fallback in /api/surf-report when fresh
+  // generation fails entirely and a stale row (of any age) is served instead.
+  _fallback?: boolean;
+  _error?: string;
 }

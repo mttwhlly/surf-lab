@@ -191,7 +191,15 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
           best_spots: location.bestSpots,
           timing_advice: 'Check conditions regularly as they change throughout the day'
         },
-        cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString()
+        cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        generation_meta: {
+          backend: 'vercel-local-fallback',
+          model: 'hardcoded',
+          report_length: fallbackReport.length,
+          word_count: fallbackReport.split(' ').length,
+          paragraphs: 2,
+          prompt_version: 'n/a',
+        }
       };
 
       aiTime = Date.now() - aiStart;
