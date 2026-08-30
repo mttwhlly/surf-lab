@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable standalone output for Docker deployment
-  output: 'standalone',
-  
+  // Don't let `next dev`/`next build` append an agent-rules block to CLAUDE.md
+  agentRules: false,
+
   // Optimize for production
   experimental: {
     // optimizeCss: true,
@@ -11,18 +11,13 @@ const nextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    remotePatterns: [{ hostname: 'localhost' }],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   compress: true,
-  
-  // Image optimization
-  images: {
-    domains: ['localhost'],
-    formats: ['image/webp', 'image/avif'],
-  },
-  
+
   // Enhanced headers for CORS and security
   headers: async () => [
     {
