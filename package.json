@@ -14,7 +14,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.3.23",
     "@neondatabase/serverless": "^1.0.1",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-devtools": "^5.83.0",
@@ -22,11 +21,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vercel/analytics": "^1.5.0",
-    "@vercel/postgres": "^0.10.0",
     "@vercel/speed-insights": "^1.2.0",
-    "ai": "^4.3.19",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.0.0",
     "dotenv": "^17.2.0",
     "lucide-react": "^0.263.1",
     "motion": "^12.42.2",
@@ -34,10 +29,8 @@
     "react": "^18",
     "react-dom": "^18",
     "resend": "^6.22.1",
-    "tailwind-merge": "^3.3.1",
     "tsx": "^4.20.3",
-    "typescript": "^5",
-    "zod": "^3.25.76"
+    "typescript": "^5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^2.1.4",
@@ -45,7 +38,6 @@
     "@tailwindcss/cli": "^4.1.11",
     "@tailwindcss/postcss": "^4.1.11",
     "autoprefixer": "^10.4.21",
-    "canvas": "^3.1.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8.5.6",
