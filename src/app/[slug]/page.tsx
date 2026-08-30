@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   let surfReport = null;
   try {
     surfReport = await getCachedReport(slug);
-  } catch (_) {}
+  } catch {}
 
   if (surfReport) {
     const waveHeight = surfReport.conditions.wave_height_ft;
@@ -76,7 +76,7 @@ export default async function LocationPage({ params }: Props) {
     // Only pass to client if fresh — same 8h window the API route uses.
     // Stale data gets null so the client shows skeleton → fresh fetch.
     if (ageMs < 8 * 60 * 60 * 1000) initialReport = cached;
-  } catch (_) {}
+  } catch {}
 
   return <SurfAppClient initialReport={initialReport} locationSlug={slug} />;
 }
