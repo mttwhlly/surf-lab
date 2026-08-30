@@ -1,0 +1,48 @@
+name: Surf Report Prompt Eval
+
+# Gates changes to the AI report generation logic. Runs the golden-scenario harness
+# (bun-service/eval/harness.ts) against the real model — cross-location repetition,
+# cross-day repetition, banned openers, word-count sanity, and the wind-direction
+# ground-truth contradiction check — and fails the job if any check fails.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bun-service/index.ts'
+      - 'bun-service/eval/**'
+  pull_request:
+    paths:
+      - 'bun-service/index.ts'
+      - 'bun-service/eval/**'
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: bun-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run prompt eval harness
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: bun run eval
+
+      - name: Upload transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-transcript
+          path: bun-service/eval/output/*.txt
+          retention-days: 14
