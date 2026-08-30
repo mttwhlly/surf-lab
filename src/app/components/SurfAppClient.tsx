@@ -252,7 +252,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             </a>
             {' · '}
             <a
-              href="https://github.com/mttwhlly/surf-lab"
+              href="https://github.com/mttwhlly/swells"
               target="_blank"
               rel="noopener noreferrer"
               className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors"
