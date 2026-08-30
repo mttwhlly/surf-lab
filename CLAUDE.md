@@ -11,9 +11,18 @@ pnpm start        # Start production server
 pnpm lint         # Run ESLint
 pnpm type-check   # TypeScript type checking (tsc --noEmit)
 pnpm setup-db     # Initialize Neon PostgreSQL schema
+pnpm test         # Vitest: route-handler/unit tests (external calls mocked)
+pnpm test:watch   # Vitest in watch mode
+pnpm test:e2e     # Playwright: e2e smoke tests (spins up pnpm dev)
 ```
 
-There are no automated tests in this project.
+### Testing
+
+Baseline suite covering the golden paths: home page, a `[slug]` location page, `/api/surf-report` (cache-hit and cache-miss), `/api/og`.
+
+- **Vitest** (`tests/unit/`) tests route-handler logic in isolation — `@/lib/db` and `fetch` are mocked, so no real DB/network calls happen.
+- **Playwright** (`tests/e2e/`) drives a real `pnpm dev` server in a browser. The `/api/surf-report` client fetch is intercepted with `page.route` to avoid exercising the live generation chain (surfability → Bun AI service → DB write); server-side reads of the DB cache (in `[slug]/page.tsx`) are real, so `.env.local` must be present locally. Not wired into CI yet.
+- `/api/og`'s e2e test is `test.fixme()` — the route currently crashes on every request in dev (tracked in [#36](https://github.com/mttwhlly/swells/issues/36)), pre-existing and unrelated to any of this repo's other in-flight work.
 
 ## Architecture
 
