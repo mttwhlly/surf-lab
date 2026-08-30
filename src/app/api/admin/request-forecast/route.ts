@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { LOCATIONS } from '@/lib/locations';
+import { sendReliabilityAlert } from '@/lib/alerts';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -99,6 +100,18 @@ export async function GET(request: NextRequest) {
 
     console.log(`🎯 CRON COMPLETE: ${succeeded}/${LOCATIONS.length} locations generated in ${totalTime}ms`);
 
+    if (failed > 0) {
+      const failureLines = results
+        .filter(r => !r.success)
+        .map(r => `- ${r.name}: ${r.error}`)
+        .join('\n');
+      await sendReliabilityAlert(
+        `Cron: ${failed}/${LOCATIONS.length} location(s) failed to generate`,
+        `${succeeded}/${LOCATIONS.length} locations succeeded in ${totalTime}ms.\n\nFailed:\n${failureLines}\n\n` +
+        `These locations are still serving whatever report is already cached (up to 24h old) until the next scheduled run or a manual retry.`
+      );
+    }
+
     return NextResponse.json({
       success: failed === 0,
       timestamp: new Date().toISOString(),
@@ -114,12 +127,19 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     const totalTime = Date.now() - startTime;
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('❌ CRON JOB FAILED:', error);
+
+    await sendReliabilityAlert(
+      'Cron job failed entirely',
+      `The scheduled forecast-refresh cron threw before completing, after ${totalTime}ms.\n\nError: ${message}\n\n` +
+      `No locations were refreshed this run — all locations are serving whatever is already cached.`
+    );
 
     return NextResponse.json({
       success: false,
       error: 'Cron job failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      details: message,
       timestamp: new Date().toISOString(),
       performance: { total_time_ms: totalTime },
     }, { status: 500 });

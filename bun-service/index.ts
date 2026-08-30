@@ -1,6 +1,7 @@
 import { serve } from "bun"
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
+import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 
 const surfReportSchema = z.object({
@@ -15,6 +16,53 @@ const surfReportSchema = z.object({
     timingAdvice: z.string().describe("When to surf — or when to check back if conditions are not currently viable")
   })
 })
+
+// Deterministic sanity checks run against every model's output before it's trusted —
+// mirrors the bounds-checking style in src/app/api/surfability/route.ts. Catches the two
+// failure modes prompt instructions alone can't guarantee: the model contradicting a
+// ground-truth fact it was told to use verbatim (the exact bug fixed in d590e12), and
+// output that's technically schema-valid but too short/long to be the report described
+// in the prompt. A tier that fails validation is treated the same as a thrown error —
+// the caller moves on to the next model, then to the deterministic template.
+export interface ReportValidationIssue {
+  code: 'banned_opener' | 'word_count' | 'wind_contradiction'
+  detail: string
+}
+
+const BANNED_OPENERS = [/^right now,?\s+we'?re looking at/i, /^we'?re looking at/i]
+
+export function validateReportText(paragraphs: string[], windDescription: string | null): ReportValidationIssue[] {
+  const issues: ReportValidationIssue[] = []
+  const combined = paragraphs.join(' ')
+
+  const firstParagraph = paragraphs[0]?.trim() ?? ''
+  if (BANNED_OPENERS.some(re => re.test(firstParagraph))) {
+    issues.push({ code: 'banned_opener', detail: 'Opens with the generic "looking at" cliche' })
+  }
+
+  paragraphs.forEach((p, i) => {
+    const words = p.trim().split(/\s+/).filter(Boolean).length
+    if (words < 40 || words > 220) {
+      issues.push({ code: 'word_count', detail: `Paragraph ${i + 1} is ${words} words (expected roughly 40-220)` })
+    }
+  })
+
+  if (windDescription) {
+    const groundTruthOffshore = /\boffshore\b/i.test(windDescription) && !/\bonshore\b/i.test(windDescription)
+    const groundTruthOnshore = /\bonshore\b/i.test(windDescription) && !/\boffshore\b/i.test(windDescription)
+    const mentionsOffshore = /\boffshore\b/i.test(combined)
+    const mentionsOnshore = /\bonshore\b/i.test(combined)
+
+    if (groundTruthOffshore && mentionsOnshore && !mentionsOffshore) {
+      issues.push({ code: 'wind_contradiction', detail: `Ground truth says offshore ("${windDescription}") but report calls the wind onshore` })
+    }
+    if (groundTruthOnshore && mentionsOffshore && !mentionsOnshore) {
+      issues.push({ code: 'wind_contradiction', detail: `Ground truth says onshore ("${windDescription}") but report calls the wind offshore` })
+    }
+  }
+
+  return issues
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -254,123 +302,142 @@ Move forward, don't repeat — the reader already has paragraph 1's conditions r
 TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
 }
 
+// Shared across every tier so the three report shapes below (primary model, secondary
+// model, deterministic template) can't drift from each other field-by-field.
+function reportConditions(surfData: any) {
+  return {
+    wave_height_ft: surfData.details.wave_height_ft,
+    wave_period_sec: surfData.details.wave_period_sec,
+    wind_speed_kts: surfData.details.wind_speed_kts,
+    wind_direction_deg: surfData.details.wind_direction_deg,
+    tide_state: surfData.details.tide_state,
+    weather_description: surfData.weather.weather_description,
+    surfability_score: surfData.score,
+    swell_direction_deg: surfData.details.swell_direction_deg,
+    swell_direction_compass: surfData.details.swell_direction_compass,
+    swell_direction_text: surfData.details.swell_direction_text,
+    swell_direction_description: surfData.details.swell_direction_description,
+    wind_direction_compass: surfData.details.wind_direction_compass,
+    wind_direction_text: surfData.details.wind_direction_text,
+    wind_direction_description: surfData.details.wind_direction_description,
+    tide_height_ft: surfData.details.tide_height_ft,
+    water_temperature_c: surfData.weather.water_temperature_c,
+    water_temperature_f: surfData.weather.water_temperature_f,
+    air_temperature_c: surfData.weather.air_temperature_c,
+    air_temperature_f: surfData.weather.air_temperature_f
+  }
+}
+
+// Model tiers, tried in order. Anthropic is primary; OpenAI is a same-shape secondary
+// so a single provider outage doesn't drop straight to the hardcoded template. Each
+// tier's output is schema-validated by generateObject AND fact-checked by
+// validateReportText — either failure moves to the next tier.
+const MODEL_TIERS = [
+  { backend: 'anthropic-primary', modelId: 'claude-haiku-4-5-20251001', model: anthropic('claude-haiku-4-5-20251001') },
+  { backend: 'openai-secondary', modelId: 'gpt-4o-mini', model: openai('gpt-4o-mini') },
+] as const
+
 export async function generateDetailedSurfReport(surfData: any, ctx: LocationContext, now: Date = new Date()) {
   console.log(`🤖 Generating surf report for ${ctx.locationName}...`)
 
-  try {
-    const prompt = createDetailedSurfPrompt(surfData, ctx, now)
+  const prompt = createDetailedSurfPrompt(surfData, ctx, now)
+  const windDescription: string | null = surfData.details.wind_direction_description ?? null
 
-    const { object: aiResponse } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: surfReportSchema,
-      prompt,
-      temperature: 0.6,
-      maxTokens: 800,
-    })
+  let lastIssues: ReportValidationIssue[] = []
+  let lastError: unknown = null
 
-    const fullReport = [
-      aiResponse.conditionsAnalysis,
-      aiResponse.recommendationsAndOutlook
-    ].join('\n\n')
+  for (const tier of MODEL_TIERS) {
+    try {
+      const { object: aiResponse } = await generateObject({
+        model: tier.model,
+        schema: surfReportSchema,
+        prompt,
+        temperature: 0.6,
+        maxTokens: 800,
+      })
 
-    console.log(`✅ AI generated report for ${ctx.locationName} (${fullReport.split(' ').length} words)`)
+      const issues = validateReportText(
+        [aiResponse.conditionsAnalysis, aiResponse.recommendationsAndOutlook],
+        windDescription
+      )
 
-    return {
-      id: `surf_${ctx.locationName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      timestamp: new Date().toISOString(),
-      location: surfData.locationSlug ?? surfData.location,
-      report: fullReport,
-      conditions: {
-        wave_height_ft: surfData.details.wave_height_ft,
-        wave_period_sec: surfData.details.wave_period_sec,
-        wind_speed_kts: surfData.details.wind_speed_kts,
-        wind_direction_deg: surfData.details.wind_direction_deg,
-        tide_state: surfData.details.tide_state,
-        weather_description: surfData.weather.weather_description,
-        surfability_score: surfData.score,
-        swell_direction_deg: surfData.details.swell_direction_deg,
-        swell_direction_compass: surfData.details.swell_direction_compass,
-        swell_direction_text: surfData.details.swell_direction_text,
-        swell_direction_description: surfData.details.swell_direction_description,
-        wind_direction_compass: surfData.details.wind_direction_compass,
-        wind_direction_text: surfData.details.wind_direction_text,
-        wind_direction_description: surfData.details.wind_direction_description,
-        tide_height_ft: surfData.details.tide_height_ft,
-        water_temperature_c: surfData.weather.water_temperature_c,
-        water_temperature_f: surfData.weather.water_temperature_f,
-        air_temperature_c: surfData.weather.air_temperature_c,
-        air_temperature_f: surfData.weather.air_temperature_f
-      },
-      recommendations: {
-        board_type: aiResponse.recommendations.boardType,
-        wetsuit_thickness: aiResponse.recommendations.wetsuitThickness,
-        skill_level: aiResponse.recommendations.skillLevel,
-        best_spots: aiResponse.recommendations.bestSpots,
-        timing_advice: aiResponse.recommendations.timingAdvice
-      },
-      cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-      generation_meta: {
-        backend: 'bun-multi-location',
-        model: 'claude-haiku-4-5-20251001',
-        report_length: fullReport.length,
-        word_count: fullReport.split(' ').length,
-        paragraphs: 2,
-        prompt_version: '3.1',
+      if (issues.length > 0) {
+        console.warn(`⚠️ ${tier.backend} output failed validation for ${ctx.locationName}: ${issues.map(i => i.detail).join('; ')}`)
+        lastIssues = issues
+        continue
       }
+
+      const fullReport = [aiResponse.conditionsAnalysis, aiResponse.recommendationsAndOutlook].join('\n\n')
+      console.log(`✅ ${tier.backend} generated report for ${ctx.locationName} (${fullReport.split(' ').length} words)`)
+
+      return {
+        id: `surf_${ctx.locationName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        location: surfData.locationSlug ?? surfData.location,
+        report: fullReport,
+        conditions: reportConditions(surfData),
+        recommendations: {
+          board_type: aiResponse.recommendations.boardType,
+          wetsuit_thickness: aiResponse.recommendations.wetsuitThickness,
+          skill_level: aiResponse.recommendations.skillLevel,
+          best_spots: aiResponse.recommendations.bestSpots,
+          timing_advice: aiResponse.recommendations.timingAdvice
+        },
+        cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        generation_meta: {
+          backend: tier.backend,
+          model: tier.modelId,
+          report_length: fullReport.length,
+          word_count: fullReport.split(' ').length,
+          paragraphs: 2,
+          prompt_version: '3.1',
+          validation_issues: [] as string[],
+        }
+      }
+
+    } catch (error) {
+      console.error(`❌ ${tier.backend} generation failed for ${ctx.locationName}:`, error)
+      lastError = error
     }
+  }
 
-  } catch (error) {
-    console.error(`❌ AI generation failed for ${ctx.locationName}:`, error)
+  // Every model tier either errored or failed fact-checking — fall back to the
+  // deterministic template. Still built from the same live, validated surf data.
+  console.error(
+    `❌ All AI tiers exhausted for ${ctx.locationName}, using deterministic fallback.` +
+    (lastIssues.length ? ` Last validation issues: ${lastIssues.map(i => i.detail).join('; ')}.` : '') +
+    (lastError ? ` Last error: ${lastError instanceof Error ? lastError.message : String(lastError)}` : '')
+  )
 
-    const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
-    const { hour } = getLocalTime(ctx.timezone, now)
-    const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description, now)
-    const fallbackReport = createEnhancedFallbackReport(surfData, windMph, ctx, viability)
+  const windMph = Math.round(surfData.details.wind_speed_kts * 1.15078)
+  const { hour } = getLocalTime(ctx.timezone, now)
+  const viability = getSessionViability(hour, ctx.lat, ctx.timezone, surfData.weather.weather_description, now)
+  const fallbackReport = createEnhancedFallbackReport(surfData, windMph, ctx, viability)
 
-    return {
-      id: `surf_fallback_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      timestamp: new Date().toISOString(),
-      location: surfData.locationSlug ?? surfData.location,
-      report: fallbackReport,
-      conditions: {
-        wave_height_ft: surfData.details.wave_height_ft,
-        wave_period_sec: surfData.details.wave_period_sec,
-        wind_speed_kts: surfData.details.wind_speed_kts,
-        wind_direction_deg: surfData.details.wind_direction_deg,
-        tide_state: surfData.details.tide_state,
-        weather_description: surfData.weather.weather_description,
-        surfability_score: surfData.score,
-        swell_direction_deg: surfData.details.swell_direction_deg,
-        swell_direction_compass: surfData.details.swell_direction_compass,
-        swell_direction_text: surfData.details.swell_direction_text,
-        swell_direction_description: surfData.details.swell_direction_description,
-        wind_direction_compass: surfData.details.wind_direction_compass,
-        wind_direction_text: surfData.details.wind_direction_text,
-        wind_direction_description: surfData.details.wind_direction_description,
-        tide_height_ft: surfData.details.tide_height_ft,
-        water_temperature_c: surfData.weather.water_temperature_c,
-        water_temperature_f: surfData.weather.water_temperature_f,
-        air_temperature_c: surfData.weather.air_temperature_c,
-        air_temperature_f: surfData.weather.air_temperature_f
-      },
-      recommendations: {
-        board_type: getBoardTypeRecommendation(surfData.details.wave_height_ft),
-        wetsuit_thickness: surfData.weather.water_temperature_f < 65 ? '3/2mm'
-          : surfData.weather.water_temperature_f < 72 ? 'Spring suit'
-          : undefined,
-        skill_level: surfData.score >= 65 ? 'intermediate' : 'beginner',
-        best_spots: ctx.bestSpots,
-        timing_advice: getFallbackTimingAdvice(surfData.details.tide_state, viability)
-      },
-      cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-      generation_meta: {
-        backend: 'bun-fallback',
-        model: 'hardcoded',
-        report_length: fallbackReport.length,
-        word_count: fallbackReport.split(' ').length,
-        paragraphs: 2,
-        prompt_version: '3.1',
-      }
+  return {
+    id: `surf_fallback_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    timestamp: new Date().toISOString(),
+    location: surfData.locationSlug ?? surfData.location,
+    report: fallbackReport,
+    conditions: reportConditions(surfData),
+    recommendations: {
+      board_type: getBoardTypeRecommendation(surfData.details.wave_height_ft),
+      wetsuit_thickness: surfData.weather.water_temperature_f < 65 ? '3/2mm'
+        : surfData.weather.water_temperature_f < 72 ? 'Spring suit'
+        : undefined,
+      skill_level: surfData.score >= 65 ? 'intermediate' : 'beginner',
+      best_spots: ctx.bestSpots,
+      timing_advice: getFallbackTimingAdvice(surfData.details.tide_state, viability)
+    },
+    cached_until: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    generation_meta: {
+      backend: 'bun-fallback',
+      model: 'hardcoded',
+      report_length: fallbackReport.length,
+      word_count: fallbackReport.split(' ').length,
+      paragraphs: 2,
+      prompt_version: '3.1',
+      validation_issues: lastIssues.map(i => i.detail),
     }
   }
 }

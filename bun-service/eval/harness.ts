@@ -3,9 +3,14 @@
 //
 // Hits the real model (no mocked LLM) so output can be eyeballed for repetition
 // and hallucination. Writes a timestamped transcript to eval/output/ and prints
-// to stdout. No pass/fail assertions — this is qualitative, read it yourself.
+// to stdout. Two kinds of check run on top of the transcript:
+//   1. validateReportText (same fact-checker generateDetailedSurfReport runs in
+//      production) — banned openers, word-count sanity, wind-label contradiction.
+//   2. Cross-location text similarity — the specific repetition bug fixed in 3436774,
+//      re-checked on every run so it can't silently regress.
+// Exits non-zero on any failure so this can run as a CI gate, not just by hand.
 
-import { generateDetailedSurfReport, type LocationContext } from '../index'
+import { generateDetailedSurfReport, validateReportText, type LocationContext } from '../index'
 
 interface MockConditions {
   wave_height_ft: number
@@ -186,26 +191,73 @@ function header(title: string) {
   log('='.repeat(80))
 }
 
-async function runOne(label: string, slug: string, locationName: string, ctx: LocationContext, c: MockConditions, now: Date) {
+// Same crude bag-of-words overlap check either direction — good enough to catch
+// "these two reports are basically the same template with nouns swapped" without
+// needing a real similarity model. Some shared surf vocabulary is expected; the
+// threshold is set well above that baseline.
+const SIMILARITY_THRESHOLD = 0.55
+
+function jaccardSimilarity(a: string, b: string): number {
+  const wordsA = new Set(a.toLowerCase().match(/[a-z']+/g) ?? [])
+  const wordsB = new Set(b.toLowerCase().match(/[a-z']+/g) ?? [])
+  const intersection = [...wordsA].filter(w => wordsB.has(w)).length
+  const union = new Set([...wordsA, ...wordsB]).size
+  return union === 0 ? 0 : intersection / union
+}
+
+const failures: string[] = []
+
+async function runOne(label: string, slug: string, locationName: string, ctx: LocationContext, c: MockConditions, now: Date): Promise<string> {
   header(label)
   const surfData = mockSurfData(slug, locationName, c)
   const result = await generateDetailedSurfReport(surfData, ctx, now)
   log(`[backend: ${result.generation_meta.backend}, words: ${result.generation_meta.word_count}]`)
   log()
   log(result.report)
+
+  const issues = validateReportText(result.report.split('\n\n'), surfData.details.wind_direction_description ?? null)
+  if (issues.length > 0) {
+    log()
+    log(`⚠️ VALIDATION FAILED: ${issues.map(i => i.detail).join('; ')}`)
+    failures.push(`${label}: ${issues.map(i => i.detail).join('; ')}`)
+  }
+  if (result.generation_meta.backend === 'bun-fallback') {
+    log(`⚠️ Fell through to the deterministic template — every model tier failed or was rejected.`)
+    failures.push(`${label}: fell through to deterministic template (all model tiers failed or invalid)`)
+  }
+
+  return result.report
 }
 
 async function main() {
   header('CROSS-LOCATION: identical mediocre conditions across 4 locations')
   log('(Testing whether output converges on the same template regardless of place.)')
+  const crossLocation: Array<{ label: string; text: string }> = []
   for (const { slug, ctx } of CROSS_LOCATION_CONTEXTS) {
-    await runOne(`Location: ${ctx.locationName}`, slug, ctx.locationName, ctx, MEDIOCRE, DAYTIME_NOW)
+    const text = await runOne(`Location: ${ctx.locationName}`, slug, ctx.locationName, ctx, MEDIOCRE, DAYTIME_NOW)
+    crossLocation.push({ label: ctx.locationName, text })
+  }
+  for (let i = 0; i < crossLocation.length; i++) {
+    for (let j = i + 1; j < crossLocation.length; j++) {
+      const sim = jaccardSimilarity(crossLocation[i]!.text, crossLocation[j]!.text)
+      if (sim > SIMILARITY_THRESHOLD) {
+        const msg = `${crossLocation[i]!.label} vs ${crossLocation[j]!.label}: ${(sim * 100).toFixed(0)}% word overlap on identical conditions (threshold ${SIMILARITY_THRESHOLD * 100}%)`
+        log(`⚠️ REPETITION: ${msg}`)
+        failures.push(msg)
+      }
+    }
   }
 
   header('CROSS-DAY: same location, same conditions, generated twice')
   log('(Simulating two consecutive days with near-identical conditions.)')
-  await runOne('St. Augustine — "Day 1"', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, MEDIOCRE, DAYTIME_NOW)
-  await runOne('St. Augustine — "Day 2" (same inputs)', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, MEDIOCRE, DAYTIME_NOW)
+  const day1 = await runOne('St. Augustine — "Day 1"', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, MEDIOCRE, DAYTIME_NOW)
+  const day2 = await runOne('St. Augustine — "Day 2" (same inputs)', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, MEDIOCRE, DAYTIME_NOW)
+  const daySim = jaccardSimilarity(day1, day2)
+  if (daySim > SIMILARITY_THRESHOLD) {
+    const msg = `Day 1 vs Day 2, same location and conditions: ${(daySim * 100).toFixed(0)}% word overlap (threshold ${SIMILARITY_THRESHOLD * 100}%)`
+    log(`⚠️ REPETITION: ${msg}`)
+    failures.push(msg)
+  }
 
   header('EDGE CASES')
   await runOne('Normal daytime, good conditions', 'st-augustine', ST_AUGUSTINE_CTX.locationName, ST_AUGUSTINE_CTX, GOOD_DAY, DAYTIME_NOW)
@@ -219,6 +271,14 @@ async function main() {
   const outPath = `eval/output/${new Date().toISOString().replace(/[:.]/g, '-')}.txt`
   await Bun.write(outPath, lines.join('\n') + '\n')
   console.log(`\nTranscript written to ${outPath}`)
+
+  if (failures.length > 0) {
+    console.error(`\n${failures.length} check(s) failed:`)
+    failures.forEach(f => console.error(`  - ${f}`))
+    process.exit(1)
+  }
+
+  console.log(`\nAll checks passed (${crossLocation.length + 7} reports generated).`)
 }
 
 main()
