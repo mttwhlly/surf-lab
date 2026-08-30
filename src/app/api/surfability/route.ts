@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLocation, DEFAULT_LOCATION_SLUG, type Location } from '@/lib/locations';
+import { getLocation, DEFAULT_LOCATION_SLUG } from '@/lib/locations';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,24 @@ interface TideData {
   nextLow: { time: string; height: number; timestamp: string } | null;
   previousHigh: { time: string; height: number; timestamp: string } | null;
   previousLow: { time: string; height: number; timestamp: string } | null;
+}
+
+// Minimal shape read from the Open-Meteo Marine API response
+interface MarineApiResponse {
+  hourly?: {
+    time: string[];
+    wave_height?: number[];
+    wave_period?: number[];
+    swell_wave_direction?: number[];
+    sea_surface_temperature?: number[];
+  };
+}
+
+// Minimal shape read from a NOAA tide prediction entry
+interface NoaaTidePrediction {
+  t: string;
+  v: string;
+  type: string;
 }
 
 // Weather code descriptions
@@ -197,7 +215,7 @@ function calculateTideState(
   return currentHeight > 2.0 ? 'High' : currentHeight < 1.0 ? 'Low' : 'Mid';
 }
 
-function findCurrentMarineData(marineData: any) {
+function findCurrentMarineData(marineData: MarineApiResponse) {
   console.log('🔍 Processing marine data...');
 
   if (!marineData?.hourly?.time) {
@@ -248,7 +266,7 @@ async function fetchMarineData(lat: number, lon: number, timezone: string) {
       { cache: 'no-store', signal: AbortSignal.timeout(12000) }
     );
     if (res.ok) return findCurrentMarineData(await res.json());
-  } catch (_) {}
+  } catch {}
 
   try {
     const res = await fetch(
@@ -256,7 +274,7 @@ async function fetchMarineData(lat: number, lon: number, timezone: string) {
       { cache: 'no-store', signal: AbortSignal.timeout(12000) }
     );
     if (res.ok) return findCurrentMarineData(await res.json());
-  } catch (_) {}
+  } catch {}
 
   throw new Error('All marine data sources failed - no real ocean data available');
 }
@@ -316,7 +334,7 @@ async function fetchTideData(stationId: string): Promise<TideData> {
       const predictionsData = await predictionsRes.json();
       if (predictionsData.predictions?.length > 0) {
         const now = new Date();
-        const allPredictions = predictionsData.predictions.map((p: any) => {
+        const allPredictions: (NoaaTidePrediction & { time: Date; parsedHeight: number; timestamp: string })[] = predictionsData.predictions.map((p: NoaaTidePrediction) => {
           const time = parseNoaaGmtTimestamp(p.t);
           return {
             ...p,
@@ -326,8 +344,8 @@ async function fetchTideData(stationId: string): Promise<TideData> {
           };
         });
 
-        const pastPredictions = allPredictions.filter((p: any) => p.time < now);
-        const futurePredictions = allPredictions.filter((p: any) => p.time >= now);
+        const pastPredictions = allPredictions.filter((p) => p.time < now);
+        const futurePredictions = allPredictions.filter((p) => p.time >= now);
 
         for (let i = pastPredictions.length - 1; i >= 0; i--) {
           const prediction = pastPredictions[i];
@@ -445,7 +463,7 @@ export async function GET(request: NextRequest) {
       tideHeight: tideData.currentHeight,
     };
 
-    const { score, surfable, rating, funRating } = calculateSurfability(currentSurfData);
+    const { score, surfable, funRating } = calculateSurfability(currentSurfData);
 
     const formatTideTime = (tideEvent: { time: string; height: number; timestamp: string } | null) => {
       if (!tideEvent) return null;

@@ -1,8 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCachedReport, saveReport, ensureInitialized } from '@/lib/db';
 import { getLocation, DEFAULT_LOCATION_SLUG, type Location } from '@/lib/locations';
+import type { SurfReport } from '@/types/surf-report';
 
 export const dynamic = 'force-dynamic';
+
+// Shape of the JSON returned by GET /api/surfability — the only fields this route reads.
+interface SurfabilityData {
+  location: string;
+  score: number;
+  details: {
+    wave_height_ft: number;
+    wave_period_sec: number;
+    swell_direction_deg: number;
+    swell_direction_compass: string;
+    swell_direction_text: string;
+    swell_direction_description: string;
+    wind_direction_deg: number;
+    wind_direction_compass: string;
+    wind_direction_text: string;
+    wind_direction_description: string;
+    wind_speed_kts: number;
+    tide_state: string;
+    tide_height_ft: number;
+  };
+  weather: {
+    water_temperature_c: number;
+    water_temperature_f: number;
+    air_temperature_c: number;
+    air_temperature_f: number;
+    weather_description: string;
+  };
+}
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -83,7 +112,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function enhanceReportWithCompassDirections(report: any, surfData: any): any {
+function enhanceReportWithCompassDirections(report: SurfReport, surfData: SurfabilityData): SurfReport {
   report.conditions = {
     ...report.conditions,
     swell_direction_deg: surfData.details.swell_direction_deg,
@@ -124,13 +153,13 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
       throw new Error(`Failed to fetch surf conditions: ${surfDataResponse.status}`);
     }
 
-    const surfData = await surfDataResponse.json();
+    const surfData: SurfabilityData = await surfDataResponse.json();
     console.log(`📊 Fresh surf data: ${surfData.location}, wave ${surfData.details.wave_height_ft}ft`);
 
     const bunServiceUrl = process.env.BUN_SERVICE_URL;
 
     const aiStart = Date.now();
-    let report;
+    let report: SurfReport;
     let aiTime: number;
     let dataSource = 'bun-ai-service-with-compass';
 
@@ -232,7 +261,7 @@ async function generateFreshReportViaBun(request: NextRequest, startTime: number
   }
 }
 
-function createDetailedFallbackReport(surfData: any, windMph: number, location: Location): string {
+function createDetailedFallbackReport(surfData: SurfabilityData, windMph: number, location: Location): string {
   const condition = surfData.score >= 70 ? 'good' : surfData.score >= 50 ? 'fair' : 'poor';
   const waveDesc = surfData.details.wave_height_ft >= 4 ? 'solid'
     : surfData.details.wave_height_ft >= 2 ? 'fun-sized' : 'small';
