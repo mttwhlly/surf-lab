@@ -13,7 +13,7 @@ const surfReportSchema = z.object({
     wetsuitThickness: z.string().optional().describe("Wetsuit recommendation"),
     skillLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe("Recommended skill level"),
     bestSpots: z.array(z.string()).min(2).describe("Top 2-3 spot recommendations for this location"),
-    timingAdvice: z.string().describe("When to surf — or when to check back if conditions are not currently viable")
+    timingAdvice: z.string().describe("When to surf — or when to check back if conditions are not currently viable. Must stay within the prompt's Daylight Window (never recommend surfing, or waiting for a tide change, after sunset or before sunrise).")
   })
 })
 
@@ -109,6 +109,15 @@ function getDaylightWindow(lat: number, timezone: string, now: Date = new Date()
   return { rise: 12 - ha, set: 12 + ha }
 }
 
+// Format a decimal hour (e.g. 19.5) as a 12-hour clock string (e.g. "7:30 PM")
+function formatClockTime(hourDecimal: number): string {
+  const h = Math.floor(hourDecimal)
+  const m = Math.round((hourDecimal % 1) * 60)
+  const period = h < 12 ? 'AM' : 'PM'
+  const displayH = h % 12 === 0 ? 12 : h % 12
+  return `${displayH}:${m.toString().padStart(2, '0')} ${period}`
+}
+
 type SessionViability =
   | { viable: true }
   | { viable: false; reason: 'night'; riseStr: string; minutesToRise: number; isPreDawn: boolean }
@@ -123,11 +132,7 @@ function getSessionViability(hour: number, lat: number, timezone: string, weathe
   }
   const { rise, set } = getDaylightWindow(lat, timezone, now)
   if (hour < rise || hour >= set) {
-    const riseH = Math.floor(rise)
-    const riseM = Math.round((rise % 1) * 60)
-    const period = riseH < 12 ? 'AM' : 'PM'
-    const displayH = riseH <= 12 ? riseH : riseH - 12
-    const riseStr = `${displayH}:${riseM.toString().padStart(2, '0')} ${period}`
+    const riseStr = formatClockTime(rise)
     // Before sunrise, minutesToRise is straightforward. After sunset, the next sunrise
     // is tomorrow's — approximate it as the same clock time, 24h later.
     const minutesToRise = Math.round((hour < rise ? rise - hour : rise + 24 - hour) * 60)
@@ -246,6 +251,10 @@ It is currently nighttime. Nobody surfs in the dark.
 - Paragraph 2: keep it short. Tell them to come back tomorrow when conditions can be properly assessed. No guessing, no false optimism.
 - timingAdvice: "Check back tomorrow" — nothing more specific.`
 
+  const daylight = getDaylightWindow(ctx.lat, ctx.timezone, now)
+  const sunriseStr = formatClockTime(daylight.rise)
+  const sunsetStr = formatClockTime(daylight.set)
+
   const nextTideStr = (() => {
     const nh = surfData.tides?.next_high
     const nl = surfData.tides?.next_low
@@ -282,6 +291,7 @@ CURRENT CONDITIONS (raw data — reference in your own words, see NOTE below on 
 • Tide Context (hint, not a sentence to reuse): ${getTideContext(surfData.details.tide_state)}
 • Local Date: ${localDate}
 • Local Time: ${localTime}
+• Daylight Window: sunrise ~${sunriseStr}, sunset ~${sunsetStr} — nobody surfs before sunrise or after sunset
 • Session Status: ${viabilityNote}
 ${viabilityInstructions}
 NOTE: Do not restate raw figures verbatim in prose (wave height, period, temperature, wind speed, etc.) — interpret and contextualise what they mean for the surf experience instead.
@@ -298,6 +308,7 @@ Open using THIS CALL'S ANGLE above. Synthesise what the wave height, period, swe
 
 **Paragraph 2 - Context & Vibe**:
 Move forward, don't repeat — the reader already has paragraph 1's conditions read, so don't re-explain it in different words. Give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
+When you name a "best window" or point to a future tide change (next high/low), only ever recommend a time inside the Daylight Window above — never suggest waiting for a tide, or paddling out, after sunset or before sunrise. If the next favorable tide falls outside daylight hours, say plainly that today's window is what's in front of you right now (or already closed for the day) rather than pointing the reader at an after-dark tide change as if it were a real option.
 
 TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
 }
