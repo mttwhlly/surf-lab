@@ -230,16 +230,23 @@ export async function saveLocationRequest(request: {
 let pushSubscriptionsInitPromise: Promise<void> | null = null;
 export function ensurePushSubscriptionsTable(): Promise<void> {
   if (!pushSubscriptionsInitPromise) {
-    pushSubscriptionsInitPromise = sql`
-      CREATE TABLE IF NOT EXISTS push_subscriptions (
-        id TEXT PRIMARY KEY,
-        endpoint TEXT UNIQUE NOT NULL,
-        subscription JSONB NOT NULL,
-        location TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `.then(() => undefined);
+    pushSubscriptionsInitPromise = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id TEXT PRIMARY KEY,
+          endpoint TEXT UNIQUE NOT NULL,
+          subscription JSONB NOT NULL,
+          location TEXT NOT NULL,
+          criteria JSONB,
+          last_matched BOOLEAN NOT NULL DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      // Idempotent for rows created before criteria/last_matched existed.
+      await sql`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS criteria JSONB`;
+      await sql`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS last_matched BOOLEAN NOT NULL DEFAULT false`;
+    })();
   }
   return pushSubscriptionsInitPromise;
 }
@@ -247,21 +254,43 @@ export function ensurePushSubscriptionsTable(): Promise<void> {
 // A push subscription is identified by its endpoint (one per browser/device).
 // Re-subscribing with the same endpoint but a different location moves it —
 // scope is single-location-per-subscriber, whichever location they last opted in from.
+// `criteria` is nullable: null means "use the default Good-conditions bar" (see lib/push.ts).
 export async function savePushSubscription(record: {
   endpoint: string;
   subscription: unknown;
   location: string;
+  criteria?: unknown;
 }): Promise<void> {
   await sql`
-    INSERT INTO push_subscriptions (id, endpoint, subscription, location)
-    VALUES (${crypto.randomUUID()}, ${record.endpoint}, ${JSON.stringify(record.subscription)}, ${record.location})
+    INSERT INTO push_subscriptions (id, endpoint, subscription, location, criteria, last_matched)
+    VALUES (${crypto.randomUUID()}, ${record.endpoint}, ${JSON.stringify(record.subscription)}, ${record.location}, ${record.criteria ? JSON.stringify(record.criteria) : null}, false)
     ON CONFLICT (endpoint) DO UPDATE
-    SET subscription = EXCLUDED.subscription, location = EXCLUDED.location, updated_at = NOW()
+    SET subscription = EXCLUDED.subscription, location = EXCLUDED.location, criteria = EXCLUDED.criteria, last_matched = false, updated_at = NOW()
   `;
 }
 
 export async function deletePushSubscription(endpoint: string): Promise<void> {
   await sql`DELETE FROM push_subscriptions WHERE endpoint = ${endpoint}`;
+}
+
+export interface PushSubscriptionRow {
+  endpoint: string;
+  subscription: unknown;
+  criteria: unknown;
+  last_matched: boolean;
+}
+
+export async function getSubscriptionsForLocation(location: string): Promise<PushSubscriptionRow[]> {
+  const rows = await sql`
+    SELECT endpoint, subscription, criteria, last_matched
+    FROM push_subscriptions
+    WHERE location = ${location}
+  `;
+  return rows as unknown as PushSubscriptionRow[];
+}
+
+export async function setSubscriptionMatchState(endpoint: string, matched: boolean): Promise<void> {
+  await sql`UPDATE push_subscriptions SET last_matched = ${matched}, updated_at = NOW() WHERE endpoint = ${endpoint}`;
 }
 
 // NEW: Get cache statistics for monitoring

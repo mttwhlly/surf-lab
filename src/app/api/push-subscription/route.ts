@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensurePushSubscriptionsTable, savePushSubscription, deletePushSubscription } from '@/lib/db';
 import { getLocation } from '@/lib/locations';
+import type { PushCriteria } from '@/lib/push';
 
 interface PushSubscriptionJSON {
   endpoint?: string;
   keys?: { p256dh?: string; auth?: string };
 }
 
+function sanitizeCriteria(input: unknown): PushCriteria | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const c = input as Record<string, unknown>;
+  const criteria: PushCriteria = {};
+
+  for (const key of ['min_wave_height_ft', 'max_wave_height_ft', 'min_wave_period_sec', 'max_wind_speed_kts', 'min_score'] as const) {
+    const value = c[key];
+    if (typeof value === 'number' && Number.isFinite(value)) criteria[key] = value;
+  }
+  if (Array.isArray(c.tide_states) && c.tide_states.every((s) => typeof s === 'string')) {
+    criteria.tide_states = c.tide_states as string[];
+  }
+
+  return Object.keys(criteria).length > 0 ? criteria : undefined;
+}
+
 export async function POST(request: NextRequest) {
-  let body: { subscription?: PushSubscriptionJSON; location?: string };
+  let body: { subscription?: PushSubscriptionJSON; location?: string; criteria?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -25,9 +42,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'A valid location is required' }, { status: 400 });
   }
 
+  const criteria = sanitizeCriteria(body.criteria);
+
   try {
     await ensurePushSubscriptionsTable();
-    await savePushSubscription({ endpoint, subscription, location });
+    await savePushSubscription({ endpoint, subscription, location, criteria });
   } catch (error) {
     console.error('❌ Error saving push subscription:', error);
     return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });

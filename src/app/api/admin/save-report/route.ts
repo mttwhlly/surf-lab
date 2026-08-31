@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveReport } from '@/lib/db';
+import { notifySubscribersForLocation } from '@/lib/push';
+import { getLocation } from '@/lib/locations';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +24,14 @@ export async function POST(request: NextRequest) {
 
     await saveReport(report);
     console.log('✅ Report saved successfully:', report.id);
-    
+
+    try {
+      const locationName = getLocation(report.location)?.name ?? report.location;
+      await notifySubscribersForLocation(report.location, locationName, report.conditions);
+    } catch (notifyError) {
+      console.error('⚠️ Push notification pass failed (report save already succeeded):', notifyError);
+    }
+
     return NextResponse.json({
       success: true,
       reportId: report.id,

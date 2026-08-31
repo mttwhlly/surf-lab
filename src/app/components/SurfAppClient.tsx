@@ -82,6 +82,10 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null);
   const pushSupported = useSyncExternalStore(subscribeNoop, getPushSupportedSnapshot, getPushSupportedServerSnapshot);
   const [pushState, setPushState] = useState<'idle' | 'subscribing' | 'subscribed' | 'unsubscribing'>('idle');
+  const [notifyFormOpen, setNotifyFormOpen] = useState(false);
+  const [notifyMinHeight, setNotifyMinHeight] = useState('1');
+  const [notifyMaxHeight, setNotifyMaxHeight] = useState('3');
+  const [notifyMinPeriod, setNotifyMinPeriod] = useState('10');
   const isStandalone = useSyncExternalStore(subscribeToStandalone, getStandaloneSnapshot, getStandaloneServerSnapshot);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -118,11 +122,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   }, [surfReport, reportLoading, locationName]);
 
   useEffect(() => {
-    if (!open && !sourcesOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setSourcesOpen(false); } };
+    if (!open && !sourcesOpen && !notifyFormOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setSourcesOpen(false); setNotifyFormOpen(false); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, sourcesOpen]);
+  }, [open, sourcesOpen, notifyFormOpen]);
 
   useEffect(() => {
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallPrompt(e as typeof installPrompt); };
@@ -217,6 +221,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     }
 
     if (pushState !== 'idle') return;
+    setNotifyFormOpen((v) => !v);
+  }
+
+  async function handleNotifySubmit(e: React.FormEvent) {
+    e.preventDefault();
     setPushState('subscribing');
     try {
       const permission = await Notification.requestPermission();
@@ -232,13 +241,21 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
+
+      const criteria = {
+        min_wave_height_ft: notifyMinHeight ? Number(notifyMinHeight) : undefined,
+        max_wave_height_ft: notifyMaxHeight ? Number(notifyMaxHeight) : undefined,
+        min_wave_period_sec: notifyMinPeriod ? Number(notifyMinPeriod) : undefined,
+      };
+
       const res = await fetch('/api/push-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription: sub.toJSON(), location: locationSlug }),
+        body: JSON.stringify({ subscription: sub.toJSON(), location: locationSlug, criteria }),
       });
       if (!res.ok) throw new Error('Subscribe request failed');
       setPushState('subscribed');
+      setNotifyFormOpen(false);
     } catch {
       setPushState('idle');
     }
@@ -364,13 +381,13 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
 
       {/* Transparent scrim captures outside clicks for any open popover */}
       <AnimatePresence>
-        {(open || sourcesOpen) && (
+        {(open || sourcesOpen || notifyFormOpen) && (
           <motion.div
             className="fixed inset-0 z-40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => { setOpen(false); setSourcesOpen(false); }}
+            onClick={() => { setOpen(false); setSourcesOpen(false); setNotifyFormOpen(false); }}
           />
         )}
       </AnimatePresence>
@@ -604,12 +621,12 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
           <AnimatePresence>
             {showNotify && (
               <motion.div
-                className="flex items-center"
+                className="relative flex items-center"
                 initial={{ opacity: 0, width: 0 }}
                 animate={{ opacity: 1, width: 'auto' }}
                 exit={{ opacity: 0, width: 0 }}
                 transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
-                style={{ overflow: 'hidden' }}
+                style={{ overflow: notifyFormOpen ? 'visible' : 'hidden' }}
               >
                 <div className="w-px h-6 bg-gray-200 shrink-0" />
                 <motion.button
@@ -631,6 +648,72 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                   )}
                   {pushState === 'subscribed' ? 'Notified' : 'Notify'}
                 </motion.button>
+
+                <AnimatePresence>
+                  {notifyFormOpen && (
+                    <motion.div
+                      className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50"
+                      style={{ transformOrigin: 'bottom right' }}
+                      initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.92, y: 8 }}
+                      transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                    >
+                      <form onSubmit={handleNotifySubmit} className="w-64 px-4 py-3 space-y-2">
+                        <p className="text-xs font-mono text-gray-400 whitespace-normal">
+                          Notify me about {locationName} when:
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            value={notifyMinHeight}
+                            onChange={(e) => setNotifyMinHeight(e.target.value)}
+                            placeholder="Min"
+                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          />
+                          <span className="text-xs font-mono text-gray-400">–</span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            value={notifyMaxHeight}
+                            onChange={(e) => setNotifyMaxHeight(e.target.value)}
+                            placeholder="Max"
+                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          />
+                          <span className="text-xs font-mono text-gray-400">ft</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={notifyMinPeriod}
+                            onChange={(e) => setNotifyMinPeriod(e.target.value)}
+                            placeholder="Min"
+                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          />
+                          <span className="text-xs font-mono text-gray-400">sec+ period</span>
+                        </div>
+                        <div className="flex justify-end">
+                          <button
+                            type="submit"
+                            disabled={pushState === 'subscribing'}
+                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            aria-label="Subscribe to notifications"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 2 11 13" />
+                              <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </form>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
