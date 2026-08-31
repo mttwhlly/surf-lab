@@ -73,4 +73,4 @@ Neon PostgreSQL (`@neondatabase/serverless`). Two tables: `surf_reports` and `lo
 
 ### What's in the codebase but not active
 
-The PWA service worker (`public/sw.js`) and manifest (`public/manifest.json`, linked from `layout.tsx`) exist but the install/notification flows are not wired up — no `navigator.serviceWorker.register` call anywhere in the app.
+The web app manifest (`public/manifest.json`, linked from `layout.tsx`) and the install-prompt flow (`beforeinstallprompt`/`appinstalled` handling and Install button in `SurfAppClient.tsx`'s dock bar) are fully wired up. `public/sw.js` is not: it's never registered (no `navigator.serviceWorker.register` call anywhere), and even if it were, it only implements a `sync` event handler — no `install`/`activate`/`fetch` handlers, so the `CACHE_STRATEGIES` it defines have no effect. Push notifications are entirely unimplemented — no permission request, subscription, push handler, or backend to send one.
