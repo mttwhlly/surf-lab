@@ -414,7 +414,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             <motion.button
               onClick={() => setOpen(o => !o)}
               whileTap={{ scale: 0.93 }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-medium font-mono transition-colors ${
+              className={`flex items-center gap-2 px-3 sm:px-5 py-3 rounded-2xl text-sm font-medium font-mono transition-colors ${
                 open ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'
               }`}
               aria-label="Change location"
@@ -424,10 +424,10 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                 <circle cx="12" cy="9" r="2.5"/>
               </svg>
-              {/* Ghost establishes fixed width = widest name; visible span sits on top */}
-              <span className="relative whitespace-nowrap">
-                <span className="invisible select-none">{widestLocationName}</span>
-                <span className="absolute inset-0 flex items-center justify-center">{locationName}</span>
+              {/* Ghost establishes fixed width = widest name (desktop only); capped + truncated on narrow screens so the dock never outgrows the viewport */}
+              <span className="relative whitespace-nowrap inline-block max-w-[6.5rem] overflow-hidden sm:max-w-none sm:overflow-visible">
+                <span className="invisible select-none hidden sm:inline">{widestLocationName}</span>
+                <span className="block truncate text-center sm:absolute sm:inset-0 sm:flex sm:items-center sm:justify-center">{locationName}</span>
               </span>
               <motion.div
                 animate={{ rotate: open ? 180 : 0 }}
@@ -571,7 +571,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                   onClick={handleListen}
                   whileTap={{ scale: 0.93 }}
                   disabled={audioState === 'loading'}
-                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
                   title={audioState === 'playing' ? 'Pause' : 'Listen to surf report'}
                 >
                   {audioState === 'idle' && (
@@ -579,7 +579,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                         <polygon points="5,3 19,12 5,21" />
                       </svg>
-                      Listen
+                      <span className="hidden sm:inline">Listen</span>
                     </>
                   )}
                   {audioState === 'loading' && (
@@ -588,7 +588,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                         <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                         <path d="M12 2a10 10 0 0 1 10 10" />
                       </svg>
-                      Loading…
+                      <span className="hidden sm:inline">Loading…</span>
                     </>
                   )}
                   {audioState === 'playing' && (
@@ -597,7 +597,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                         <rect x="6" y="4" width="4" height="16" rx="1" />
                         <rect x="14" y="4" width="4" height="16" rx="1" />
                       </svg>
-                      Playing
+                      <span className="hidden sm:inline">Playing</span>
                     </>
                   )}
                 </motion.button>
@@ -619,14 +619,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 <motion.button
                   onClick={handleInstall}
                   whileTap={{ scale: 0.93 }}
-                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
                   title="Add to Home Screen"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 16V4M8 12l4 4 4-4"/>
                     <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
                   </svg>
-                  Install
+                  <span className="hidden sm:inline">Install</span>
                 </motion.button>
               </motion.div>
             )}
@@ -646,14 +646,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 <motion.button
                   onClick={() => setIosHintOpen((v) => !v)}
                   whileTap={{ scale: 0.93 }}
-                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
                   title="Add to Home Screen to install and enable notifications"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2v13M8 6l4-4 4 4" />
                     <rect x="5" y="10" width="14" height="11" rx="2" />
                   </svg>
-                  Install
+                  <span className="hidden sm:inline">Install</span>
                 </motion.button>
 
                 <AnimatePresence>
@@ -696,7 +696,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                   onClick={handleNotify}
                   whileTap={{ scale: 0.93 }}
                   disabled={pushState === 'subscribing' || pushState === 'unsubscribing'}
-                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
                   title={pushState === 'subscribed' ? `Turn off notifications for ${locationName}` : `Get notified about ${locationName}`}
                 >
                   {pushState === 'subscribed' ? (
@@ -709,7 +709,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                       <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
                     </svg>
                   )}
-                  {pushState === 'subscribed' ? 'Notified' : 'Notify'}
+                  <span className="hidden sm:inline">{pushState === 'subscribed' ? 'Notified' : 'Notify'}</span>
                 </motion.button>
 
                 <AnimatePresence>
