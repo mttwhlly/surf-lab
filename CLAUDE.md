@@ -54,7 +54,7 @@ Report generation is **not done inside Next.js**. The `BUN_SERVICE_URL` env var 
 
 `page.tsx` (server component) → `SurfAppClient.tsx` (client component) → `useSurfReportOptimized` hook (TanStack Query) → `/api/surf-report`
 
-The hook is configured with aggressive caching (`staleTime: 30m`, no auto-refetch) because reports only update via cron. `SurfReportCard` renders the raw AI-generated text as a large prose block.
+The hook is configured with aggressive caching (`staleTime: 30m`, no polling interval) because reports only update via cron; it does refetch on window focus (once the 30m staleTime has elapsed) so long-lived open tabs catch up when revisited. `SurfReportCard` renders the raw AI-generated text as a large prose block.
 
 ### Database
 

@@ -40,7 +40,7 @@ export function useSurfReportOptimized({ initialData, locationSlug }: Options) {
     staleTime: 30 * 60 * 1000,
     gcTime: 4 * 60 * 60 * 1000,
     refetchInterval: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnReconnect: false,
     refetchIntervalInBackground: false,
     retry: 1,
