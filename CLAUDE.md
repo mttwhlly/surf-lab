@@ -70,7 +70,10 @@ Neon PostgreSQL (`@neondatabase/serverless`). Two tables: `surf_reports` and `lo
 | `CRON_SECRET` | Bearer token required by `/api/admin/request-forecast` |
 | `NEXT_PUBLIC_API_URL` | Base URL for internal self-calls (optional, falls back to host header) |
 | `RESEND_API_KEY` | Sends the "suggest a spot" notification email via Resend (`/api/location-request`) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | VAPID public key passed to `PushManager.subscribe()` in the browser |
+| `VAPID_PRIVATE_KEY` | VAPID private key used server-side to sign push messages (`web-push`) |
+| `VAPID_SUBJECT` | Contact identifier (URL) sent to push services alongside VAPID-signed requests |
 
 ### What's in the codebase but not active
 
-The web app manifest (`public/manifest.json`, linked from `layout.tsx`) and the install-prompt flow (`beforeinstallprompt`/`appinstalled` handling and Install button in `SurfAppClient.tsx`'s dock bar) are fully wired up. `public/sw.js` is not: it's never registered (no `navigator.serviceWorker.register` call anywhere), and even if it were, it only implements a `sync` event handler — no `install`/`activate`/`fetch` handlers, so the `CACHE_STRATEGIES` it defines have no effect. Push notifications are entirely unimplemented — no permission request, subscription, push handler, or backend to send one.
+The web app manifest (`public/manifest.json`, linked from `layout.tsx`), the install-prompt flow (`beforeinstallprompt`/`appinstalled` handling and Install button in `SurfAppClient.tsx`'s dock bar), and `public/sw.js`'s offline caching (registered from `SurfAppClient.tsx`, with `install`/`activate`/`fetch` handlers implementing its `CACHE_STRATEGIES`) are all fully wired up. Push notifications are not: a VAPID keypair is provisioned (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) and the `web-push` package is installed, but there's still no permission request, subscription storage, opt-in UI, push handler, or send path — no `Notification`/`pushManager` references exist in the app yet.
