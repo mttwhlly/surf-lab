@@ -68,6 +68,20 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const [suggestEmail, setSuggestEmail] = useState('');
   const [suggestHoneypot, setSuggestHoneypot] = useState('');
 
+  function resetSuggestForm() {
+    setSuggestState('idle');
+    setSuggestSpotName('');
+    setSuggestCityState('');
+    setSuggestEmail('');
+    setSuggestHoneypot('');
+  }
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (!open) resetSuggestForm();
+  }
+
   const { report: surfReport, loading: reportLoading, error: reportError } =
     useSurfReportOptimized({ initialData: initialReport, locationSlug });
 
@@ -86,11 +100,6 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, sourcesOpen]);
-
-  useEffect(() => {
-    if (!open) resetSuggestForm();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   useEffect(() => {
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallPrompt(e as typeof installPrompt); };
@@ -152,14 +161,6 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     localStorage.setItem(STORAGE_KEY, slug);
     setOpen(false);
     router.push(`/${slug}`);
-  }
-
-  function resetSuggestForm() {
-    setSuggestState('idle');
-    setSuggestSpotName('');
-    setSuggestCityState('');
-    setSuggestEmail('');
-    setSuggestHoneypot('');
   }
 
   async function handleSuggestSubmit(e: React.FormEvent) {
