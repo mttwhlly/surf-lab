@@ -64,6 +64,17 @@ function getPushSupportedServerSnapshot(): boolean {
   return false;
 }
 
+function getIsIOSSnapshot(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
+function getIsIOSServerSnapshot(): boolean {
+  return false;
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -83,6 +94,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const pushSupported = useSyncExternalStore(subscribeNoop, getPushSupportedSnapshot, getPushSupportedServerSnapshot);
   const [pushState, setPushState] = useState<'idle' | 'subscribing' | 'subscribed' | 'unsubscribing'>('idle');
   const [notifyFormOpen, setNotifyFormOpen] = useState(false);
+  const [iosHintOpen, setIosHintOpen] = useState(false);
+  const isIOS = useSyncExternalStore(subscribeNoop, getIsIOSSnapshot, getIsIOSServerSnapshot);
   const [notifyMinHeight, setNotifyMinHeight] = useState('1');
   const [notifyMaxHeight, setNotifyMaxHeight] = useState('3');
   const [notifyMinPeriod, setNotifyMinPeriod] = useState('10');
@@ -122,11 +135,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   }, [surfReport, reportLoading, locationName]);
 
   useEffect(() => {
-    if (!open && !sourcesOpen && !notifyFormOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setSourcesOpen(false); setNotifyFormOpen(false); } };
+    if (!open && !sourcesOpen && !notifyFormOpen && !iosHintOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setSourcesOpen(false); setNotifyFormOpen(false); setIosHintOpen(false); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, sourcesOpen, notifyFormOpen]);
+  }, [open, sourcesOpen, notifyFormOpen, iosHintOpen]);
 
   useEffect(() => {
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallPrompt(e as typeof installPrompt); };
@@ -163,6 +176,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const showInstall = !isStandalone && !!installPrompt && !!surfReport && !reportLoading;
   const showListen = !!surfReport && !reportLoading;
   const showNotify = pushSupported && !!surfReport && !reportLoading;
+  const showIOSHint = isIOS && !isStandalone && !showInstall && !showNotify && !!surfReport && !reportLoading;
 
   async function handleListen() {
     if (audioState === 'playing') {
@@ -381,13 +395,13 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
 
       {/* Transparent scrim captures outside clicks for any open popover */}
       <AnimatePresence>
-        {(open || sourcesOpen || notifyFormOpen) && (
+        {(open || sourcesOpen || notifyFormOpen || iosHintOpen) && (
           <motion.div
             className="fixed inset-0 z-40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => { setOpen(false); setSourcesOpen(false); setNotifyFormOpen(false); }}
+            onClick={() => { setOpen(false); setSourcesOpen(false); setNotifyFormOpen(false); setIosHintOpen(false); }}
           />
         )}
       </AnimatePresence>
@@ -614,6 +628,55 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                   </svg>
                   Install
                 </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showIOSHint && (
+              <motion.div
+                className="relative flex items-center"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                style={{ overflow: iosHintOpen ? 'visible' : 'hidden' }}
+              >
+                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <motion.button
+                  onClick={() => setIosHintOpen((v) => !v)}
+                  whileTap={{ scale: 0.93 }}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
+                  title="Add to Home Screen to install and enable notifications"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2v13M8 6l4-4 4 4" />
+                    <rect x="5" y="10" width="14" height="11" rx="2" />
+                  </svg>
+                  Install
+                </motion.button>
+
+                <AnimatePresence>
+                  {iosHintOpen && (
+                    <motion.div
+                      className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50"
+                      style={{ transformOrigin: 'bottom right' }}
+                      initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.92, y: 8 }}
+                      transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                    >
+                      <p className="w-64 px-4 py-3 text-xs font-mono text-gray-500 whitespace-normal leading-relaxed">
+                        Tap{' '}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline align-text-bottom mx-0.5">
+                          <path d="M12 2v13M8 6l4-4 4 4" />
+                          <rect x="5" y="10" width="14" height="11" rx="2" />
+                        </svg>{' '}
+                        Share, then <strong className="text-gray-700">Add to Home Screen</strong> to install Swells and turn on notifications.
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
