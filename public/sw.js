@@ -1,6 +1,7 @@
 const CACHE_NAME = 'surf-lab-v2.0.0';
 const DYNAMIC_CACHE = 'surf-lab-dynamic-v2.0.0';
 const IMAGE_CACHE = 'surf-lab-images-v2.0.0';
+const CURRENT_CACHES = [CACHE_NAME, DYNAMIC_CACHE, IMAGE_CACHE];
 
 // Runtime caching strategy
 const CACHE_STRATEGIES = {
@@ -9,6 +10,54 @@ const CACHE_STRATEGIES = {
   static: { maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
   images: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
 };
+
+// Routes that must always hit the network untouched: cron/admin actions,
+// form submissions, per-report audio (not worth the Cache Storage quota),
+// and health checks.
+const PASSTHROUGH_PREFIXES = ['/api/admin', '/api/location-request', '/api/audio-report', '/api/health'];
+
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => !CURRENT_CACHES.includes(key)).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (PASSTHROUGH_PREFIXES.some(prefix => url.pathname.startsWith(prefix))) return;
+
+  if (url.pathname === '/api/surfability') {
+    event.respondWith(staleWhileRevalidate(event, DYNAMIC_CACHE));
+    return;
+  }
+
+  if (url.pathname === '/api/surf-report') {
+    event.respondWith(cacheFirst(event, DYNAMIC_CACHE, CACHE_STRATEGIES.aiReport.maxAge));
+    return;
+  }
+
+  if (url.pathname === '/api/og') {
+    event.respondWith(cacheFirst(event, IMAGE_CACHE, CACHE_STRATEGIES.images.maxAge));
+    return;
+  }
+
+  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/') || url.pathname === '/manifest.json') {
+    event.respondWith(cacheFirst(event, CACHE_NAME, CACHE_STRATEGIES.static.maxAge));
+    return;
+  }
+
+  // Page navigations and anything else: leave to the network as normal.
+});
 
 // Background sync for failed requests
 self.addEventListener('sync', event => {
@@ -26,5 +75,65 @@ async function syncSurfData() {
     }
   } catch (error) {
     console.log('Background sync failed, will retry');
+  }
+}
+
+function stampResponse(response) {
+  const headers = new Headers(response.headers);
+  headers.set('sw-fetched-on', Date.now().toString());
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+function isFresh(cachedResponse, maxAge) {
+  const fetchedOn = cachedResponse.headers.get('sw-fetched-on');
+  if (!fetchedOn) return false;
+  return Date.now() - Number(fetchedOn) < maxAge;
+}
+
+// Serve from cache immediately when present; always revalidate in the background.
+async function staleWhileRevalidate(event, cacheName) {
+  const { request } = event;
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+
+  const networkFetch = fetch(request)
+    .then(response => {
+      if (response.ok) cache.put(request, stampResponse(response.clone()));
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    event.waitUntil(networkFetch);
+    return cached;
+  }
+
+  const response = await networkFetch;
+  return response || Response.error();
+}
+
+// Serve from cache only while fresh; otherwise fetch, falling back to a
+// stale cache entry if the network is unavailable.
+async function cacheFirst(event, cacheName, maxAge) {
+  const { request } = event;
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  if (cached && isFresh(cached, maxAge)) {
+    return cached;
+  }
+
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      event.waitUntil(cache.put(request, stampResponse(response.clone())));
+    }
+    return response;
+  } catch (error) {
+    if (cached) return cached;
+    throw error;
   }
 }

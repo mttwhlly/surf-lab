@@ -112,6 +112,12 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   async function handleInstall() {
     if (!installPrompt) return;
     installPrompt.prompt();
