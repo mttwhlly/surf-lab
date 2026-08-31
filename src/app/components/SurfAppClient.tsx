@@ -52,6 +52,27 @@ function getStandaloneServerSnapshot(): boolean {
   return false;
 }
 
+function subscribeNoop() {
+  return () => {};
+}
+
+function getPushSupportedSnapshot(): boolean {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+function getPushSupportedServerSnapshot(): boolean {
+  return false;
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+
 export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const router = useRouter();
   const location = getLocation(locationSlug);
@@ -59,6 +80,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const [open, setOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null);
+  const pushSupported = useSyncExternalStore(subscribeNoop, getPushSupportedSnapshot, getPushSupportedServerSnapshot);
+  const [pushState, setPushState] = useState<'idle' | 'subscribing' | 'subscribed' | 'unsubscribing'>('idle');
   const isStandalone = useSyncExternalStore(subscribeToStandalone, getStandaloneSnapshot, getStandaloneServerSnapshot);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -118,6 +141,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!pushSupported) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushState(sub ? 'subscribed' : 'idle'))
+      .catch(() => {});
+  }, [pushSupported]);
+
   async function handleInstall() {
     if (!installPrompt) return;
     installPrompt.prompt();
@@ -127,6 +158,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
 
   const showInstall = !isStandalone && !!installPrompt && !!surfReport && !reportLoading;
   const showListen = !!surfReport && !reportLoading;
+  const showNotify = pushSupported && !!surfReport && !reportLoading;
 
   async function handleListen() {
     if (audioState === 'playing') {
@@ -160,6 +192,55 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
       audio.play();
     } catch {
       setAudioState('idle');
+    }
+  }
+
+  async function handleNotify() {
+    if (pushState === 'subscribed') {
+      setPushState('unsubscribing');
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          await fetch('/api/push-subscription', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+        }
+        setPushState('idle');
+      } catch {
+        setPushState('subscribed');
+      }
+      return;
+    }
+
+    if (pushState !== 'idle') return;
+    setPushState('subscribing');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushState('idle');
+        return;
+      }
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) throw new Error('Missing VAPID public key');
+
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+      const res = await fetch('/api/push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON(), location: locationSlug }),
+      });
+      if (!res.ok) throw new Error('Subscribe request failed');
+      setPushState('subscribed');
+    } catch {
+      setPushState('idle');
     }
   }
 
@@ -515,6 +596,40 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                     <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
                   </svg>
                   Install
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showNotify && (
+              <motion.div
+                className="flex items-center"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <motion.button
+                  onClick={handleNotify}
+                  whileTap={{ scale: 0.93 }}
+                  disabled={pushState === 'subscribing' || pushState === 'unsubscribing'}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
+                  title={pushState === 'subscribed' ? `Turn off notifications for ${locationName}` : `Get notified about ${locationName}`}
+                >
+                  {pushState === 'subscribed' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                      <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                    </svg>
+                  )}
+                  {pushState === 'subscribed' ? 'Notified' : 'Notify'}
                 </motion.button>
               </motion.div>
             )}

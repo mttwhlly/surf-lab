@@ -227,6 +227,43 @@ export async function saveLocationRequest(request: {
   `;
 }
 
+let pushSubscriptionsInitPromise: Promise<void> | null = null;
+export function ensurePushSubscriptionsTable(): Promise<void> {
+  if (!pushSubscriptionsInitPromise) {
+    pushSubscriptionsInitPromise = sql`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id TEXT PRIMARY KEY,
+        endpoint TEXT UNIQUE NOT NULL,
+        subscription JSONB NOT NULL,
+        location TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `.then(() => undefined);
+  }
+  return pushSubscriptionsInitPromise;
+}
+
+// A push subscription is identified by its endpoint (one per browser/device).
+// Re-subscribing with the same endpoint but a different location moves it —
+// scope is single-location-per-subscriber, whichever location they last opted in from.
+export async function savePushSubscription(record: {
+  endpoint: string;
+  subscription: unknown;
+  location: string;
+}): Promise<void> {
+  await sql`
+    INSERT INTO push_subscriptions (id, endpoint, subscription, location)
+    VALUES (${crypto.randomUUID()}, ${record.endpoint}, ${JSON.stringify(record.subscription)}, ${record.location})
+    ON CONFLICT (endpoint) DO UPDATE
+    SET subscription = EXCLUDED.subscription, location = EXCLUDED.location, updated_at = NOW()
+  `;
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<void> {
+  await sql`DELETE FROM push_subscriptions WHERE endpoint = ${endpoint}`;
+}
+
 // NEW: Get cache statistics for monitoring
 export async function getCacheStats(): Promise<{
   totalReports: number;

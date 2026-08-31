@@ -58,7 +58,7 @@ The hook is configured with aggressive caching (`staleTime: 30m`, no auto-refetc
 
 ### Database
 
-Neon PostgreSQL (`@neondatabase/serverless`). Two tables: `surf_reports` and `location_requests` (spot suggestions from the "Suggest a spot" form). All DB functions are in `src/app/lib/db.ts`. The `getCachedReport` function fetches the most recent row for a location regardless of `cached_until` — the 8-hour staleness check is done in the route handler.
+Neon PostgreSQL (`@neondatabase/serverless`). Three tables: `surf_reports`, `location_requests` (spot suggestions from the "Suggest a spot" form), and `push_subscriptions` (browser push subscriptions, one row per subscription `endpoint`, scoped to a single `location`). All DB functions are in `src/app/lib/db.ts`. The `getCachedReport` function fetches the most recent row for a location regardless of `cached_until` — the 8-hour staleness check is done in the route handler.
 
 ### Environment variables required
 
@@ -76,4 +76,8 @@ Neon PostgreSQL (`@neondatabase/serverless`). Two tables: `surf_reports` and `lo
 
 ### What's in the codebase but not active
 
-The web app manifest (`public/manifest.json`, linked from `layout.tsx`), the install-prompt flow (`beforeinstallprompt`/`appinstalled` handling and Install button in `SurfAppClient.tsx`'s dock bar), and `public/sw.js`'s offline caching (registered from `SurfAppClient.tsx`, with `install`/`activate`/`fetch` handlers implementing its `CACHE_STRATEGIES`) are all fully wired up. Push notifications are not: a VAPID keypair is provisioned (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) and the `web-push` package is installed, but there's still no permission request, subscription storage, opt-in UI, push handler, or send path — no `Notification`/`pushManager` references exist in the app yet.
+The web app manifest (`public/manifest.json`, linked from `layout.tsx`), the install-prompt flow (`beforeinstallprompt`/`appinstalled` handling and Install button in `SurfAppClient.tsx`'s dock bar), and `public/sw.js`'s offline caching (registered from `SurfAppClient.tsx`, with `install`/`activate`/`fetch` handlers implementing its `CACHE_STRATEGIES`) are all fully wired up.
+
+Push notification **opt-in** is now wired up too: a "Notify" button in `SurfAppClient.tsx`'s dock bar (shown only where `PushManager` exists — which on iOS means only inside an installed PWA) requests `Notification` permission, subscribes via `pushManager.subscribe()` with the VAPID public key, and POSTs the subscription to `/api/push-subscription`, which upserts it into the `push_subscriptions` table keyed by `endpoint`. Scope is single-location: a subscription is tied to whichever location the visitor was viewing when they opted in, and re-subscribing from a different location moves it (re-upserts the same `endpoint` row with the new `location`). Clicking again unsubscribes client-side and `DELETE`s the row.
+
+What's still missing: `public/sw.js` has no `push` event handler (nothing renders a notification when one arrives), and there's no send path — nothing calls `web-push` to actually deliver a notification, and no trigger logic (scheduled digest vs. condition-threshold) decides when one should fire.
