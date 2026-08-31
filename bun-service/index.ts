@@ -5,8 +5,8 @@ import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 
 const surfReportSchema = z.object({
-  conditionsAnalysis: z.string().min(120).describe("Paragraph 1 of the surf report — follow the prompt's angle and structure instructions exactly, do not default to a generic conditions-summary opener"),
-  recommendationsAndOutlook: z.string().min(100).describe("Paragraph 2 of the surf report — follow the prompt's angle and structure instructions exactly, do not restate paragraph 1"),
+  conditionsAnalysis: z.string().min(80).describe("Paragraph 1 of the surf report — follow the prompt's angle and structure instructions exactly, do not default to a generic conditions-summary opener"),
+  recommendationsAndOutlook: z.string().min(60).describe("Paragraph 2 of the surf report — a single clear recommendation and honest verdict, not a rundown of every spot. Do not restate paragraph 1"),
 
   recommendations: z.object({
     boardType: z.string().describe("General board type recommendation (longboard, shortboard, funboard) - NO specific sizes"),
@@ -42,8 +42,8 @@ export function validateReportText(paragraphs: string[], windDescription: string
 
   paragraphs.forEach((p, i) => {
     const words = p.trim().split(/\s+/).filter(Boolean).length
-    if (words < 40 || words > 220) {
-      issues.push({ code: 'word_count', detail: `Paragraph ${i + 1} is ${words} words (expected roughly 40-220)` })
+    if (words < 25 || words > 130) {
+      issues.push({ code: 'word_count', detail: `Paragraph ${i + 1} is ${words} words (expected roughly 25-130)` })
     }
   })
 
@@ -299,15 +299,16 @@ NOTE: The "Wave Quality" and "Tide Context" lines above are internal hints descr
 NOTE: Do not state any date, day-of-week, season, or "time of year" framing, and do not claim conditions are typical/atypical for the season — unless it is directly supported by the data given above. If you reference the day or date, it must match Local Date exactly.
 
 AVOID GENERIC OPENERS: Never start with "Right now we're looking at", "We're looking at", "Right now, we're looking at", or any close variant of that phrasing — it's the default surf-report cliché and every report should not sound the same.
+AVOID STOCK PHRASES: Don't reach for worn-out crutches like "bathwater warm", "honestly", "real talk", "quick and choppy", "worth the paddle out", "get your feet wet", "is your best bet" — find your own words each time, specific to today's conditions.
 THIS CALL'S ANGLE: ${pickOpeningAngle()}
 
-WRITE 2 PARAGRAPHS, roughly 70-120 words each (vary sentence count and length naturally — do not force a fixed number of sentences):
+WRITE 2 SHORT PARAGRAPHS, totaling roughly 100-160 words (not padded to hit that number — shorter is fine if the conditions don't need more words to describe; vary sentence count and length naturally). This report renders in large type on a phone screen, so every sentence has to earn its place — cut anything that only restates or decorates a point you've already made.
 
-**Paragraph 1 - Conditions Analysis**:
-Open using THIS CALL'S ANGLE above. Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy. For the onshore/offshore effect, use the Wind Effect ground-truth label given above verbatim in meaning (do not re-derive it from the raw wind compass direction or from local-knowledge phrases like "offshore on X winds" — those describe a different location's or spot's typical pattern and can mislead you on today's actual angle). Use your local knowledge of this break to make it specific and accurate otherwise. Weave in how the tide and water temp affect the experience.
+**Paragraph 1 - Conditions Analysis** (~50-90 words):
+Open using THIS CALL'S ANGLE above. Synthesise what the wave height, period, swell direction, and wind actually mean for surf quality at this specific spot — the character of the waves, whether they'll have power or be mushy. For the onshore/offshore effect, use the Wind Effect ground-truth label given above verbatim in meaning (do not re-derive it from the raw wind compass direction or from local-knowledge phrases like "offshore on X winds" — those describe a different location's or spot's typical pattern and can mislead you on today's actual angle). Use your local knowledge of this break to make it specific and accurate otherwise. Mention the tide and water temp only if they actually change what the surfer should expect today — skip them if they're unremarkable.
 
-**Paragraph 2 - Context & Vibe**:
-Move forward, don't repeat — the reader already has paragraph 1's conditions read, so don't re-explain it in different words. Give the reasoning and local context: why certain spots work or don't in these conditions, what the crowd/vibe will be like, the best window in the day and why, and an honest bottom-line take on whether it's worth paddling out.
+**Paragraph 2 - Verdict & Move** (~50-80 words):
+Move forward, don't repeat — the reader already has paragraph 1's conditions read, so don't re-explain it in different words. Give ONE clear recommendation: name the single best spot for today's conditions and why, in a phrase — not a ranked rundown of every spot on the list. Mention the crowd or vibe only if it changes the call. Close with the honest bottom line — worth paddling out or not — and a timing window if one actually matters.
 When you name a "best window" or point to a future tide change (next high/low), only ever recommend a time inside the Daylight Window above — never suggest waiting for a tide, or paddling out, after sunset or before sunrise. If the next favorable tide falls outside daylight hours, say plainly that today's window is what's in front of you right now (or already closed for the day) rather than pointing the reader at an after-dark tide change as if it were a real option.
 
 TONE: ${ctx.voiceDescriptor}. Use some surf slang but keep it readable.`
@@ -401,7 +402,7 @@ export async function generateDetailedSurfReport(surfData: any, ctx: LocationCon
           report_length: fullReport.length,
           word_count: fullReport.split(' ').length,
           paragraphs: 2,
-          prompt_version: '3.1',
+          prompt_version: '3.2',
           validation_issues: [] as string[],
         }
       }
@@ -447,7 +448,7 @@ export async function generateDetailedSurfReport(surfData: any, ctx: LocationCon
       report_length: fallbackReport.length,
       word_count: fallbackReport.split(' ').length,
       paragraphs: 2,
-      prompt_version: '3.1',
+      prompt_version: '3.2',
       validation_issues: lastIssues.map(i => i.detail),
     }
   }
