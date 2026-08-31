@@ -73,4 +73,4 @@ Neon PostgreSQL (`@neondatabase/serverless`). Two tables: `surf_reports` and `lo
 
 ### What's in the codebase but not active
 
-`useSurfReport.ts` is superseded by `useSurfReportOptimized.ts`. The `StatusCard`, `WeatherHeader`, `SurfDetails`, `TideCard`, and animation components exist but are unused in the main UI. The PWA service worker (`public/sw.js`) and manifest exist but the install/notification flows are not wired up.
+The PWA service worker (`public/sw.js`) and manifest (`public/manifest.json`, linked from `layout.tsx`) exist but the install/notification flows are not wired up — no `navigator.serviceWorker.register` call anywhere in the app.
