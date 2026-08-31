@@ -650,8 +650,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                   title="Add to Home Screen to install and enable notifications"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2v13M8 6l4-4 4 4" />
-                    <rect x="5" y="10" width="14" height="11" rx="2" />
+                    <path d="M12 16V4M8 12l4 4 4-4"/>
+                    <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
                   </svg>
                   <span className="hidden sm:inline">Install</span>
                 </motion.button>
