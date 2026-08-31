@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
               <div style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
                 WAVES
               </div>
-              <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#0077cc' }}>
+              <div style={{ display: 'flex', fontSize: '36px', fontWeight: 'bold', color: '#0077cc' }}>
                 {waveHeight}ft
               </div>
             </div>
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
               <div style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
                 WIND
               </div>
-              <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#0077cc' }}>
+              <div style={{ display: 'flex', fontSize: '36px', fontWeight: 'bold', color: '#0077cc' }}>
                 {wind}kts
               </div>
             </div>
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
               <div style={{ fontSize: '16px', color: '#666', marginBottom: '8px' }}>
                 WATER
               </div>
-              <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#0077cc' }}>
+              <div style={{ display: 'flex', fontSize: '36px', fontWeight: 'bold', color: '#0077cc' }}>
                 {temp}°F
               </div>
             </div>
