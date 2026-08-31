@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'motion/react';
@@ -8,20 +8,35 @@ import { LOCATIONS } from '../lib/locations';
 
 const STORAGE_KEY = 'surf_location';
 
+function subscribeToSavedLocation() {
+  return () => {};
+}
+
+function getSavedLocationSnapshot(): string | null {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  return saved && LOCATIONS.some(l => l.slug === saved) ? saved : null;
+}
+
+function getSavedLocationServerSnapshot(): string | null | undefined {
+  return undefined;
+}
+
 export function LocationGate() {
   const router = useRouter();
-  const [status, setStatus] = useState<'checking' | 'redirecting' | 'pick'>('checking');
+  const savedSlug = useSyncExternalStore(
+    subscribeToSavedLocation,
+    getSavedLocationSnapshot,
+    getSavedLocationServerSnapshot
+  );
+  const status: 'checking' | 'redirecting' | 'pick' =
+    savedSlug === undefined ? 'checking' : savedSlug ? 'redirecting' : 'pick';
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && LOCATIONS.find(l => l.slug === saved)) {
-      setStatus('redirecting');
-      router.replace(`/${saved}`);
-    } else {
-      setStatus('pick');
+    if (savedSlug) {
+      router.replace(`/${savedSlug}`);
     }
-  }, [router]);
+  }, [savedSlug, router]);
 
   useEffect(() => {
     if (!pendingSlug) return;

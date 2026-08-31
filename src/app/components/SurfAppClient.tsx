@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useSurfReportOptimized } from '../hooks/useSurfReportOptimized';
 import { SurfReportCard } from './surf/SurfReportCard';
 import { ErrorCard } from './ui/ErrorCard';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { SurfReport } from '../types/surf-report';
 import { getLocation, LOCATIONS } from '../lib/locations';
 
@@ -36,6 +36,22 @@ const widestLocationName = LOCATIONS.reduce(
   ''
 );
 
+function subscribeToStandalone(callback: () => void) {
+  window.addEventListener('appinstalled', callback);
+  return () => window.removeEventListener('appinstalled', callback);
+}
+
+function getStandaloneSnapshot(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
+  );
+}
+
+function getStandaloneServerSnapshot(): boolean {
+  return false;
+}
+
 export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const router = useRouter();
   const location = getLocation(locationSlug);
@@ -43,7 +59,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   const [open, setOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const isStandalone = useSyncExternalStore(subscribeToStandalone, getStandaloneSnapshot, getStandaloneServerSnapshot);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [suggestState, setSuggestState] = useState<'idle' | 'form' | 'submitting' | 'done'>('idle');
@@ -77,19 +93,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   }, [open]);
 
   useEffect(() => {
-    setIsStandalone(
-      window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
-    );
     const onPrompt = (e: Event) => { e.preventDefault(); setInstallPrompt(e as typeof installPrompt); };
-    const onInstalled = () => { setInstallPrompt(null); setIsStandalone(true); };
+    const onInstalled = () => setInstallPrompt(null);
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleInstall() {
