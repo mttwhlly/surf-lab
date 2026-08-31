@@ -424,10 +424,10 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                 <circle cx="12" cy="9" r="2.5"/>
               </svg>
-              {/* Ghost establishes fixed width = widest name (desktop only); capped + truncated on narrow screens so the dock never outgrows the viewport */}
-              <span className="relative whitespace-nowrap inline-block max-w-[6.5rem] overflow-hidden sm:max-w-none sm:overflow-visible">
-                <span className="invisible select-none hidden sm:inline">{widestLocationName}</span>
-                <span className="block truncate text-center sm:absolute sm:inset-0 sm:flex sm:items-center sm:justify-center">{locationName}</span>
+              {/* Ghost establishes fixed width = widest name; visible span sits on top */}
+              <span className="relative whitespace-nowrap">
+                <span className="invisible select-none">{widestLocationName}</span>
+                <span className="absolute inset-0 flex items-center justify-center">{locationName}</span>
               </span>
               <motion.div
                 animate={{ rotate: open ? 180 : 0 }}
