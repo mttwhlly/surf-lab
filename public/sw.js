@@ -1,12 +1,12 @@
-const CACHE_NAME = 'surf-lab-v2.0.0';
-const DYNAMIC_CACHE = 'surf-lab-dynamic-v2.0.0';
-const IMAGE_CACHE = 'surf-lab-images-v2.0.0';
+const CACHE_NAME = 'surf-lab-v2.0.1';
+const DYNAMIC_CACHE = 'surf-lab-dynamic-v2.0.1';
+const IMAGE_CACHE = 'surf-lab-images-v2.0.1';
 const CURRENT_CACHES = [CACHE_NAME, DYNAMIC_CACHE, IMAGE_CACHE];
 
 // Runtime caching strategy
 const CACHE_STRATEGIES = {
   surfData: { maxAge: 5 * 60 * 1000, staleWhileRevalidate: true }, // 5 minutes
-  aiReport: { maxAge: 4 * 60 * 60 * 1000, staleWhileRevalidate: false }, // 4 hours
+  aiReport: { maxAge: 30 * 60 * 1000, staleWhileRevalidate: false }, // 30 minutes, matches the app's React Query staleTime
   static: { maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
   images: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
 };
