@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useNow } from '@/hooks/useNow';
 import type { SurfReport } from '@/types/surf-report';
 
 interface SurfReportCardProps {
@@ -27,17 +27,17 @@ function getProvenanceNotice(report: SurfReport | null): string | null {
 }
 
 export function SurfReportCard({ report, loading, timezone }: SurfReportCardProps) {
-  const [formattedTime, setFormattedTime] = useState<string | null>(null);
+  const now = useNow();
 
-  useEffect(() => {
-    if (!report?.timestamp) return;
+  let formattedTime: string | null = null;
+  if (report?.timestamp && now) {
     const reportTime = new Date(report.timestamp);
-    const now = new Date();
+    const nowDate = new Date(now);
     const dayKeyOpts: Intl.DateTimeFormatOptions = timezone
       ? { timeZone: timezone, year: 'numeric', month: 'numeric', day: 'numeric' }
       : { year: 'numeric', month: 'numeric', day: 'numeric' };
     const isToday =
-      reportTime.toLocaleDateString('en-US', dayKeyOpts) === now.toLocaleDateString('en-US', dayKeyOpts);
+      reportTime.toLocaleDateString('en-US', dayKeyOpts) === nowDate.toLocaleDateString('en-US', dayKeyOpts);
     const datePart = isToday
       ? 'Today'
       : reportTime.toLocaleDateString('en-US', { ...dayKeyOpts, month: 'short' });
@@ -47,8 +47,8 @@ export function SurfReportCard({ report, loading, timezone }: SurfReportCardProp
       minute: '2-digit',
       timeZoneName: 'short',
     });
-    setFormattedTime(datePart + ' @ ' + timePart);
-  }, [report?.timestamp, timezone]);
+    formattedTime = datePart + ' @ ' + timePart;
+  }
 
   // Don't render anything if loading and no report
   if (loading && !report) {
