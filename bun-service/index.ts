@@ -247,7 +247,7 @@ It is currently pre-dawn (still dark, but sunrise is only ~${viability.minutesTo
 IMPORTANT — TIMING OVERRIDE:
 It is currently nighttime. Nobody surfs in the dark.
 - Do NOT attempt to describe or predict tomorrow's conditions — you have no forecast data, only a current snapshot that may not reflect what morning will bring.
-- Paragraph 1: acknowledge it's night and surfing isn't happening. If the user seems curious about conditions, you may briefly describe the CURRENT snapshot (not as a prediction).
+- Paragraph 1: acknowledge it's night and surfing isn't happening, in one line — don't pad it with a tautology like "daylight won't return until dawn" or "it'll stay dark until sunrise" (dawn/sunrise being when light returns is definitionally true and says nothing). If the user seems curious about conditions, you may briefly describe the CURRENT snapshot (not as a prediction).
 - Paragraph 2: keep it short. Tell them to come back tomorrow when conditions can be properly assessed. No guessing, no false optimism.
 - timingAdvice: "Check back tomorrow" — nothing more specific.`
 
