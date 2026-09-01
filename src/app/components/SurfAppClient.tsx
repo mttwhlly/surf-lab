@@ -323,7 +323,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         </div>
 
         <div className="mx-auto max-w-3xl w-full px-4 mt-6">
-          <p className="text-sm font-mono text-gray-400 dark:text-neutral-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 dark:border-neutral-700 border-1 border-dashed rounded-xl">
+          <div className="text-sm font-mono text-gray-400 dark:text-neutral-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 dark:border-neutral-700 border-1 border-dashed rounded-xl">
             <span className="mr-2 font-bold">Heads up!</span>
             {'This AI surf report uses '}
             <span className="relative inline-block">
@@ -344,7 +344,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                     transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                   >
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-neutral-700">
-                      <p className="text-xs font-mono font-semibold uppercase tracking-widest text-gray-400 dark:text-neutral-400">Data sources</p>
+                      <span className="block text-xs font-mono font-semibold uppercase tracking-widest text-gray-400 dark:text-neutral-400">Data sources</span>
                     </div>
                     {[
                       { label: 'Open-Meteo Marine', detail: 'Waves, swell, sea temp', href: 'https://open-meteo.com/en/docs/marine-weather-api' },
@@ -367,7 +367,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
               </AnimatePresence>
             </span>
             {', however, it can make mistakes so always check conditions yourself before paddling out.'}
-          </p>
+          </div>
         </div>
 
         <div className="mx-auto max-w-3xl w-full px-4 mt-4 text-center">

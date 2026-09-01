@@ -24,6 +24,21 @@ Baseline suite covering the golden paths: home page, a `[slug]` location page, `
 - **Playwright** (`tests/e2e/`) drives a real `pnpm dev` server in a browser. The `/api/surf-report` client fetch is intercepted with `page.route` to avoid exercising the live generation chain (surfability → Bun AI service → DB write); server-side reads of the DB cache (in `[slug]/page.tsx`) are real, so `.env.local` must be present locally. Not wired into CI yet.
 - `/api/og`'s e2e test is `test.fixme()` — the route currently crashes on every request in dev (tracked in [#36](https://github.com/mttwhlly/swells/issues/36)), pre-existing and unrelated to any of this repo's other in-flight work.
 
+### Service worker cache trap (local dev)
+
+`public/sw.js` is registered from `SurfAppClient.tsx` and aggressively caches JS chunks/assets for offline use (see `CACHE_STRATEGIES`). When testing a frontend change in a browser (manually or via `claude-in-chrome`/Playwright), a **previously-registered SW can keep serving the old JS bundle** even after the dev server has recompiled and is sending fresh HTML — a plain reload or hard reload does not fix this. Symptoms: a hydration mismatch or "stale" behavior that shows the *pre-edit* client output alongside *post-edit* server output, or UI that just doesn't reflect a change you just made.
+
+If a browser session for this app was used in an earlier conversation/tab, or the symptom looks like this, unregister the SW and clear caches before trusting what you see:
+
+```js
+const regs = await navigator.serviceWorker.getRegistrations();
+for (const r of regs) await r.unregister();
+const keys = await caches.keys();
+for (const k of keys) await caches.delete(k);
+```
+
+Run that in the page context (e.g. `javascript_tool`/`browser_evaluate`), then reload. Only needed for browser-based manual/e2e testing — Vitest and Playwright's mocked-fetch tests aren't affected.
+
 ## Architecture
 
 This is a Next.js 14 app (App Router) that delivers AI-generated surf reports for St. Augustine, FL. The live site is `swells.surf` (previously `surf-report-rouge.vercel.app` and `canisurf.today`, now inactive).
