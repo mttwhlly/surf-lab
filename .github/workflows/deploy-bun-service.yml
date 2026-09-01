@@ -1,0 +1,37 @@
+name: Deploy Bun Service
+
+# Redeploys bun-service on Coolify whenever it changes on main. Scoped to
+# bun-service/** so unrelated Next.js changes (already handled by Vercel's
+# own git integration) don't trigger a Coolify redeploy. Waits for the
+# prompt eval gate (eval-prompt.yml) to pass before deploying.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bun-service/**'
+  workflow_dispatch:
+
+jobs:
+  wait-for-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Surf Report Prompt Eval to pass
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-name: eval
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success
+
+  deploy:
+    needs: wait-for-eval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "${{ secrets.COOLIFY_DEPLOY_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
+          echo "Coolify deploy response: $HTTP_CODE"
+          [ "$HTTP_CODE" = "200" ] || exit 1

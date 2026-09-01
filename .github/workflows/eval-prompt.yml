@@ -8,12 +8,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'bun-service/index.ts'
-      - 'bun-service/eval/**'
+      - 'bun-service/**'
   pull_request:
     paths:
-      - 'bun-service/index.ts'
-      - 'bun-service/eval/**'
+      - 'bun-service/**'
   workflow_dispatch:
 
 jobs:
