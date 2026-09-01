@@ -147,9 +147,9 @@ export const viewport: Viewport = {
   userScalable: true,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#171717' },
   ],
-  colorScheme: 'light',
+  colorScheme: 'light dark',
 };
 
 export default function RootLayout({

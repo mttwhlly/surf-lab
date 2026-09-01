@@ -67,20 +67,29 @@ export function LocationGate() {
         width={96}
         height={96}
         priority
+        className="dark:hidden"
+      />
+      <Image
+        src="/wave-logo-dark.svg"
+        alt="Swells Logo"
+        width={96}
+        height={96}
+        priority
+        className="hidden dark:block"
       />
 
       <div className="mt-10 w-full max-w-xs relative">
         <select
           defaultValue=""
           onChange={e => handleSelect(e.target.value)}
-          className="w-full py-3 pl-4 pr-10 border border-gray-200 rounded-xl text-base font-mono text-gray-700 bg-white appearance-none cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100 transition-colors"
+          className="w-full py-3 pl-4 pr-10 border border-gray-200 dark:border-neutral-600 rounded-xl text-base font-mono text-gray-700 dark:text-neutral-100 bg-white dark:bg-neutral-800 appearance-none cursor-pointer hover:border-gray-300 dark:hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-neutral-700 transition-colors"
         >
           <option value="" disabled>Where are you surfing?</option>
           {LOCATIONS.map(loc => (
             <option key={loc.slug} value={loc.slug}>{loc.name}</option>
           ))}
         </select>
-        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-400">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6"/>
           </svg>

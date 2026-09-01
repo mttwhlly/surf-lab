@@ -1,5 +1,13 @@
 @import 'tailwindcss';
 
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

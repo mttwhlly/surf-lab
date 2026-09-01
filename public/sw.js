@@ -1,6 +1,6 @@
-const CACHE_NAME = 'surf-lab-v2.0.1';
-const DYNAMIC_CACHE = 'surf-lab-dynamic-v2.0.1';
-const IMAGE_CACHE = 'surf-lab-images-v2.0.1';
+const CACHE_NAME = 'surf-lab-v2.0.2';
+const DYNAMIC_CACHE = 'surf-lab-dynamic-v2.0.2';
+const IMAGE_CACHE = 'surf-lab-images-v2.0.2';
 const CURRENT_CACHES = [CACHE_NAME, DYNAMIC_CACHE, IMAGE_CACHE];
 
 // Runtime caching strategy

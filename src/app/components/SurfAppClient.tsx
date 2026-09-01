@@ -313,7 +313,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
         <div className="mt-8">
-          <Image src="/wave-logo.svg" alt="Swells Logo" width={64} height={64} priority />
+          <Image src="/wave-logo.svg" alt="Swells Logo" width={64} height={64} priority className="dark:hidden" />
+          <Image src="/wave-logo-dark.svg" alt="Swells Logo" width={64} height={64} priority className="hidden dark:block" />
         </div>
 
         <div className="mt-6 px-4 max-w-3xl w-full">
@@ -322,28 +323,28 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         </div>
 
         <div className="mx-auto max-w-3xl w-full px-4 mt-6">
-          <p className="text-sm font-mono text-gray-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 border-1 border-dashed rounded-xl">
+          <p className="text-sm font-mono text-gray-400 dark:text-neutral-400 mx-auto whitespace-pre-wrap pt-2 pb-3 px-4 border-gray-200 dark:border-neutral-700 border-1 border-dashed rounded-xl">
             <span className="mr-2 font-bold">Heads up!</span>
             {'This AI surf report uses '}
             <span className="relative inline-block">
               <button
                 onClick={() => setSourcesOpen(o => !o)}
-                className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors cursor-pointer"
+                className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors cursor-pointer"
               >
                 real ocean and weather data
               </button>
               <AnimatePresence>
                 {sourcesOpen && (
                   <motion.div
-                    className="absolute bottom-full left-1/2 mb-3 w-64 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50"
+                    className="absolute bottom-full left-1/2 mb-3 w-64 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-50"
                     style={{ translateX: '-50%', transformOrigin: 'bottom center' }}
                     initial={{ opacity: 0, scale: 0.92, y: 6 }}
                     animate={{ opacity: 1, scale: 1,    y: 0 }}
                     exit={{    opacity: 0, scale: 0.92, y: 6 }}
                     transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                   >
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-xs font-mono font-semibold uppercase tracking-widest text-gray-400">Data sources</p>
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-neutral-700">
+                      <p className="text-xs font-mono font-semibold uppercase tracking-widest text-gray-400 dark:text-neutral-400">Data sources</p>
                     </div>
                     {[
                       { label: 'Open-Meteo Marine', detail: 'Waves, swell, sea temp', href: 'https://open-meteo.com/en/docs/marine-weather-api' },
@@ -355,10 +356,10 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex flex-col px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                        className="flex flex-col px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors border-b border-gray-50 dark:border-neutral-700 last:border-0"
                       >
-                        <span className="text-sm font-medium font-mono text-gray-800">{label}</span>
-                        <span className="text-xs font-mono text-gray-400">{detail}</span>
+                        <span className="text-sm font-medium font-mono text-gray-800 dark:text-neutral-100">{label}</span>
+                        <span className="text-xs font-mono text-gray-400 dark:text-neutral-400">{detail}</span>
                       </a>
                     ))}
                   </motion.div>
@@ -370,13 +371,13 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
         </div>
 
         <div className="mx-auto max-w-3xl w-full px-4 mt-4 text-center">
-          <p className="text-xs font-mono text-gray-400">
+          <p className="text-xs font-mono text-gray-400 dark:text-neutral-400">
             {'Built by '}
             <a
               href="https://mattwhalley.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors"
+              className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors"
             >
               Matt Whalley
             </a>
@@ -385,7 +386,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
               href="https://github.com/mttwhlly/swells"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2 decoration-dashed hover:text-gray-600 transition-colors"
+              className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors"
             >
               view source
             </a>
@@ -408,14 +409,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
 
       {/* Dock bar */}
       <div className="fixed bottom-6 inset-x-0 flex justify-center z-50 pointer-events-none">
-        <div className="pointer-events-auto flex items-center bg-white border border-gray-200 rounded-2xl shadow-lg">
+        <div className="pointer-events-auto flex items-center bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl shadow-lg">
           {/* Location dock item */}
           <div className="relative">
             <motion.button
               onClick={() => setOpen(o => !o)}
               whileTap={{ scale: 0.93 }}
-              className={`flex items-center gap-2 px-3 sm:px-5 py-3 rounded-2xl text-sm font-medium font-mono transition-colors ${
-                open ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'
+              className={`flex items-center gap-2 px-3 sm:px-5 py-3 rounded-l-2xl text-sm font-medium font-mono transition-colors ${
+                open ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-neutral-700' : 'text-gray-700 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-700'
               }`}
               aria-label="Change location"
               aria-expanded={open}
@@ -445,7 +446,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
               {open && (
                 <motion.div
                   layout
-                  className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
+                  className="absolute bottom-full left-0 mb-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden"
                   style={{ transformOrigin: 'bottom left', minWidth: '100%' }}
                   initial={{ opacity: 0, scale: 0.92, y: 8 }}
                   animate={{ opacity: 1, scale: 1,    y: 0 }}
@@ -472,8 +473,8 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                         onClick={() => handleLocationChange(loc.slug)}
                         className={`w-full text-left px-4 py-2.5 text-sm font-mono whitespace-nowrap transition-colors ${
                           loc.slug === locationSlug
-                            ? 'bg-gray-100 text-gray-900 font-semibold'
-                            : 'text-gray-700 hover:bg-gray-50'
+                            ? 'bg-gray-100 dark:bg-neutral-700 text-gray-900 dark:text-white font-semibold'
+                            : 'text-gray-700 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-700'
                         }`}
                       >
                         {loc.name}
@@ -481,11 +482,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                     ))}
                   </motion.div>
 
-                  <div className="border-t border-gray-100">
+                  <div className="border-t border-gray-100 dark:border-neutral-700">
                     {suggestState === 'idle' && (
                       <button
                         onClick={() => setSuggestState('form')}
-                        className="w-full text-left px-4 py-2.5 text-sm font-mono text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors whitespace-nowrap flex items-center gap-2"
+                        className="w-full text-left px-4 py-2.5 text-sm font-mono text-gray-400 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700 hover:text-gray-600 dark:hover:text-neutral-200 transition-colors whitespace-nowrap flex items-center gap-2"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                           <path d="M12 5v14M5 12h14" />
@@ -503,7 +504,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                           value={suggestSpotName}
                           onChange={(e) => setSuggestSpotName(e.target.value)}
                           placeholder="Spot name"
-                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-400 rounded-lg focus:outline-none focus:border-gray-400 dark:focus:border-neutral-400"
                         />
                         <input
                           type="text"
@@ -511,14 +512,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                           value={suggestCityState}
                           onChange={(e) => setSuggestCityState(e.target.value)}
                           placeholder="City, State"
-                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-400 rounded-lg focus:outline-none focus:border-gray-400 dark:focus:border-neutral-400"
                         />
                         <input
                           type="email"
                           value={suggestEmail}
                           onChange={(e) => setSuggestEmail(e.target.value)}
                           placeholder="Email (optional)"
-                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                          className="w-full text-sm font-mono px-2 py-1.5 border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-400 rounded-lg focus:outline-none focus:border-gray-400 dark:focus:border-neutral-400"
                         />
                         <input
                           type="text"
@@ -533,7 +534,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                           <button
                             type="submit"
                             disabled={suggestState === 'submitting'}
-                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 dark:bg-neutral-100 text-white dark:text-neutral-800 hover:bg-gray-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-wait"
                             aria-label="Submit spot suggestion"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -546,7 +547,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                     )}
 
                     {suggestState === 'done' && (
-                      <div className="px-4 py-2.5 text-sm font-mono text-gray-500 whitespace-nowrap">
+                      <div className="px-4 py-2.5 text-sm font-mono text-gray-500 dark:text-neutral-300 whitespace-nowrap">
                         Got it — thanks!
                       </div>
                     )}
@@ -566,12 +567,12 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                 style={{ overflow: 'hidden' }}
               >
-                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <div className="w-px h-6 bg-gray-200 dark:bg-neutral-600 shrink-0" />
                 <motion.button
                   onClick={handleListen}
                   whileTap={{ scale: 0.93 }}
                   disabled={audioState === 'loading'}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors whitespace-nowrap disabled:cursor-wait"
                   title={audioState === 'playing' ? 'Pause' : 'Listen to surf report'}
                 >
                   {audioState === 'idle' && (
@@ -615,11 +616,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                 style={{ overflow: 'hidden' }}
               >
-                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <div className="w-px h-6 bg-gray-200 dark:bg-neutral-600 shrink-0" />
                 <motion.button
                   onClick={handleInstall}
                   whileTap={{ scale: 0.93 }}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-r-2xl transition-colors whitespace-nowrap"
                   title="Add to Home Screen"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -642,11 +643,11 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                 style={{ overflow: iosHintOpen ? 'visible' : 'hidden' }}
               >
-                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <div className="w-px h-6 bg-gray-200 dark:bg-neutral-600 shrink-0" />
                 <motion.button
                   onClick={() => setIosHintOpen((v) => !v)}
                   whileTap={{ scale: 0.93 }}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-r-2xl transition-colors whitespace-nowrap"
                   title="Add to Home Screen to install and enable notifications"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -659,20 +660,20 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 <AnimatePresence>
                   {iosHintOpen && (
                     <motion.div
-                      className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full right-0 mb-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-50"
                       style={{ transformOrigin: 'bottom right' }}
                       initial={{ opacity: 0, scale: 0.92, y: 8 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.92, y: 8 }}
                       transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                     >
-                      <p className="w-64 px-4 py-3 text-xs font-mono text-gray-500 whitespace-normal leading-relaxed">
+                      <p className="w-64 px-4 py-3 text-xs font-mono text-gray-500 dark:text-neutral-300 whitespace-normal leading-relaxed">
                         Tap{' '}
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline align-text-bottom mx-0.5">
                           <path d="M12 2v13M8 6l4-4 4 4" />
                           <rect x="5" y="10" width="14" height="11" rx="2" />
                         </svg>{' '}
-                        Share, then <strong className="text-gray-700">Add to Home Screen</strong> to install Swells and turn on notifications.
+                        Share, then <strong className="text-gray-700 dark:text-neutral-200">Add to Home Screen</strong> to install Swells and turn on notifications.
                       </p>
                     </motion.div>
                   )}
@@ -691,12 +692,12 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                 style={{ overflow: notifyFormOpen ? 'visible' : 'hidden' }}
               >
-                <div className="w-px h-6 bg-gray-200 shrink-0" />
+                <div className="w-px h-6 bg-gray-200 dark:bg-neutral-600 shrink-0" />
                 <motion.button
                   onClick={handleNotify}
                   whileTap={{ scale: 0.93 }}
                   disabled={pushState === 'subscribing' || pushState === 'unsubscribing'}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-mono text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-r-2xl transition-colors whitespace-nowrap disabled:cursor-wait"
                   title={pushState === 'subscribed' ? `Turn off notifications for ${locationName}` : `Get notified about ${locationName}`}
                 >
                   {pushState === 'subscribed' ? (
@@ -715,7 +716,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                 <AnimatePresence>
                   {notifyFormOpen && (
                     <motion.div
-                      className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full right-0 mb-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl overflow-hidden z-50"
                       style={{ transformOrigin: 'bottom right' }}
                       initial={{ opacity: 0, scale: 0.92, y: 8 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -723,7 +724,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                       transition={{ type: 'spring', stiffness: 480, damping: 32, mass: 0.7 }}
                     >
                       <form onSubmit={handleNotifySubmit} className="w-64 px-4 py-3 space-y-2">
-                        <p className="text-xs font-mono text-gray-400 whitespace-normal">
+                        <p className="text-xs font-mono text-gray-400 dark:text-neutral-400 whitespace-normal">
                           Notify me about {locationName} when:
                         </p>
                         <div className="flex items-center gap-1.5">
@@ -734,9 +735,9 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                             value={notifyMinHeight}
                             onChange={(e) => setNotifyMinHeight(e.target.value)}
                             placeholder="Min"
-                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-400 rounded-lg focus:outline-none focus:border-gray-400 dark:focus:border-neutral-400"
                           />
-                          <span className="text-xs font-mono text-gray-400">–</span>
+                          <span className="text-xs font-mono text-gray-400 dark:text-neutral-400">–</span>
                           <input
                             type="number"
                             step="0.5"
@@ -744,9 +745,9 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                             value={notifyMaxHeight}
                             onChange={(e) => setNotifyMaxHeight(e.target.value)}
                             placeholder="Max"
-                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-400 rounded-lg focus:outline-none focus:border-gray-400 dark:focus:border-neutral-400"
                           />
-                          <span className="text-xs font-mono text-gray-400">ft</span>
+                          <span className="text-xs font-mono text-gray-400 dark:text-neutral-400">ft</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <input
@@ -756,15 +757,15 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
                             value={notifyMinPeriod}
                             onChange={(e) => setNotifyMinPeriod(e.target.value)}
                             placeholder="Min"
-                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                            className="w-16 text-sm font-mono px-2 py-1.5 border border-gray-200 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:placeholder-neutral-400 rounded-lg focus:outline-none focus:border-gray-400 dark:focus:border-neutral-400"
                           />
-                          <span className="text-xs font-mono text-gray-400">sec+ period</span>
+                          <span className="text-xs font-mono text-gray-400 dark:text-neutral-400">sec+ period</span>
                         </div>
                         <div className="flex justify-end">
                           <button
                             type="submit"
                             disabled={pushState === 'subscribing'}
-                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            className="shrink-0 p-1.5 rounded-lg bg-gray-900 dark:bg-neutral-100 text-white dark:text-neutral-800 hover:bg-gray-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-wait"
                             aria-label="Subscribe to notifications"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

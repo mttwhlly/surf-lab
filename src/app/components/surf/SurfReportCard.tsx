@@ -56,43 +56,43 @@ export function SurfReportCard({ report, loading, timezone }: SurfReportCardProp
 <>
         <div className="h-4"></div>
           <div className="mb-12">
-            <div className="h-6 bg-gray-200 rounded w-1/3 block mx-auto"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-1/3 block mx-auto"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="h-4"></div>
           <div className="my-8"></div>
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
             <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
           <div className="my-8">
-            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            <div className="h-6 bg-gray-200 dark:bg-neutral-700 rounded w-full"></div>
           </div>
  </>
     );
@@ -108,14 +108,14 @@ export function SurfReportCard({ report, loading, timezone }: SurfReportCardProp
   return (
 
         <div className="prose prose-lg mb-6">
-            <pre className="text-center pt-4 pb-2 uppercase text-gray-500 tracking-wide">{formattedTime ?? ''}</pre>
+            <pre className="text-center pt-4 pb-2 uppercase text-gray-500 dark:text-neutral-300 tracking-wide">{formattedTime ?? ''}</pre>
             {provenanceNotice && (
-              <p className="text-center pb-6 text-xs uppercase tracking-wide text-amber-600">
+              <p className="text-center pb-6 text-xs uppercase tracking-wide text-amber-600 dark:text-amber-400">
                 {provenanceNotice}
               </p>
             )}
             {!provenanceNotice && <div className="pb-8" />}
-          <p className="text-gray-800 leading-relaxed text-2xl md:text-3xl whitespace-pre-wrap">
+          <p className="text-gray-800 dark:text-neutral-100 leading-relaxed text-2xl md:text-3xl whitespace-pre-wrap">
             {report?.report || 'Loading surf report...'}
           </p>
         </div>
