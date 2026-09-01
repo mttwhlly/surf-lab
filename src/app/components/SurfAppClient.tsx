@@ -153,9 +153,24 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
   }, []);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
+    if (!('serviceWorker' in navigator)) return;
+
+    // iOS treats a home-screen-installed app and a regular Safari tab as
+    // separate storage partitions, each with its own SW registration. A
+    // Safari tab that isn't fully reloaded often can sit on a stale SW
+    // indefinitely (the browser's own update check is lazy), so force a
+    // check on register and whenever the tab regains focus.
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => reg.update().catch(() => {}))
+      .catch(() => {});
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      navigator.serviceWorker.getRegistration('/sw.js').then((reg) => reg?.update().catch(() => {}));
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   useEffect(() => {
