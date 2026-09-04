@@ -323,9 +323,9 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
     <>
       <motion.div
         className="flex flex-col items-center justify-start min-h-screen pb-28"
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
       >
         <div className="mt-8">
           <Image src="/wave-logo.svg" alt="Swells Logo" width={64} height={64} priority className="dark:hidden" />

@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Lacquer } from 'next/font/google';
 import { QueryProvider } from './providers/QueryProvider';
-import { SplashScreen } from './components/SplashScreen';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import './globals.css';
@@ -210,7 +209,6 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <SplashScreen />
         <QueryProvider>
           {children}
         </QueryProvider>
