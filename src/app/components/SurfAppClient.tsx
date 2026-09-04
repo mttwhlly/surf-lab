@@ -404,7 +404,7 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
               rel="noopener noreferrer"
               className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors"
             >
-              view source
+              source
             </a>
             {' · '}
             <Link href="/about" className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors">
