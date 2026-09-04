@@ -8,6 +8,12 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// Without this, Next.js treats the DB reads below (raw @neondatabase/serverless
+// calls, invisible to its fetch-based cache heuristics) as fully static since
+// generateStaticParams is present — the page freezes at build time and never
+// regenerates until the next deploy, serving a stale initialReport indefinitely.
+export const revalidate = 1800;
+
 function extractConditionFromReport(report: string): string {
   const conditionKeywords = {
     'Epic': ['epic', 'firing', 'going off', 'pumping', 'cranking'],
