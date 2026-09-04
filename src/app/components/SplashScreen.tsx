@@ -3,11 +3,16 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
-// How long the logo holds at rest before it starts animating out.
-const HOLD_MS = 250;
-// Scale/opacity transition duration — kept in sync with the Tailwind
-// duration-[650ms] classes below.
-const TRANSITION_MS = 650;
+// Three phases, old-Twitter-splash style: hold at rest, expand the logo
+// while the backdrop stays fully opaque (so nothing behind it is ever
+// visible), then fade *only the logo* out against that still-solid
+// backdrop before the whole overlay is removed. The app underneath is
+// never crossfaded with the logo, so it can't show through mid-animation.
+type Phase = 'hold' | 'expand' | 'fade';
+
+const HOLD_MS = 200;
+const EXPAND_MS = 550;
+const FADE_MS = 250;
 
 // Persists for the life of this browsing context (tab / installed-PWA
 // session), so a reopen after the app was fully killed shows it again but
@@ -16,13 +21,14 @@ const SESSION_KEY = 'swells-splash-shown';
 
 export function SplashScreen() {
   const [visible, setVisible] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const [phase, setPhase] = useState<Phase>('hold');
 
   useEffect(() => {
     if (sessionStorage.getItem(SESSION_KEY)) return;
     setVisible(true);
 
-    const leaveTimer = setTimeout(() => setLeaving(true), HOLD_MS);
+    const expandTimer = setTimeout(() => setPhase('expand'), HOLD_MS);
+    const fadeTimer = setTimeout(() => setPhase('fade'), HOLD_MS + EXPAND_MS);
     // Mark as shown only once the sequence actually finishes — not up front —
     // so React Strict Mode's dev-only double-invoke (mount, cleanup, mount)
     // doesn't see the flag already set on its second pass and skip
@@ -30,10 +36,11 @@ export function SplashScreen() {
     const hideTimer = setTimeout(() => {
       setVisible(false);
       sessionStorage.setItem(SESSION_KEY, '1');
-    }, HOLD_MS + TRANSITION_MS);
+    }, HOLD_MS + EXPAND_MS + FADE_MS);
 
     return () => {
-      clearTimeout(leaveTimer);
+      clearTimeout(expandTimer);
+      clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
     };
   }, []);
@@ -43,14 +50,14 @@ export function SplashScreen() {
   return (
     <div
       aria-hidden="true"
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-neutral-900 pointer-events-none transition-opacity duration-[650ms] ease-out ${
-        leaving ? 'opacity-0' : 'opacity-100'
-      }`}
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-white dark:bg-neutral-900 pointer-events-none"
     >
       <div
-        className={`transition-transform duration-[650ms] ease-out ${
-          leaving ? 'scale-150' : 'scale-100'
-        }`}
+        style={{
+          transform: phase === 'hold' ? 'scale(1)' : 'scale(4.5)',
+          opacity: phase === 'fade' ? 0 : 1,
+          transition: phase === 'fade' ? `opacity ${FADE_MS}ms ease-in` : `transform ${EXPAND_MS}ms ease-in`,
+        }}
       >
         <Image src="/wave-logo.svg" alt="" width={96} height={96} priority className="dark:hidden" />
         <Image src="/wave-logo-dark.svg" alt="" width={96} height={96} priority className="hidden dark:block" />
