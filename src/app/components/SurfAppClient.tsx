@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSurfReportOptimized } from '../hooks/useSurfReportOptimized';
@@ -405,6 +406,14 @@ export function SurfAppClient({ initialReport, locationSlug }: Props) {
             >
               view source
             </a>
+            {' · '}
+            <Link href="/about" className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors">
+              about
+            </Link>
+            {' · '}
+            <Link href="/privacy" className="underline underline-offset-2 decoration-dashed hover:text-gray-600 dark:hover:text-neutral-200 transition-colors">
+              privacy
+            </Link>
           </p>
         </div>
       </motion.div>

@@ -193,6 +193,10 @@ export default function RootLayout({
                 "@type": "Organization",
                 "name": "Swells"
               },
+              "sameAs": [
+                "https://github.com/mttwhlly/swells",
+                "https://mattwhalley.com"
+              ],
               "geo": {
                 "@type": "GeoCoordinates",
                 "latitude": 29.9,
